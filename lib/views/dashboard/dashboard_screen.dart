@@ -100,13 +100,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final crossCount = constraints.maxWidth > 1100 ? 4 : (constraints.maxWidth > 600 ? 2 : 1);
+                  final double aspect = constraints.maxWidth > 1100
+                      ? 2.2
+                      : (constraints.maxWidth > 600
+                          ? 2.3
+                          : (constraints.maxWidth > 400 ? 2.6 : 1.95));
+
                   return GridView.count(
                     crossAxisCount: crossCount,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 2.2,
+                    childAspectRatio: aspect,
                     children: [
                       _buildStatCard(
                         title: 'Total Revenue (Paid)',

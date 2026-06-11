@@ -621,7 +621,16 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Invoice Number:'),
-                    Text(_invoiceNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        _invoiceNumber,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -629,7 +638,16 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Bill To Customer:'),
-                    Text(client.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        client.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),

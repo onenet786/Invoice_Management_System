@@ -252,13 +252,19 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
     return LayoutBuilder(builder: (context, constraints) {
       // Choose grid layout columns based on width
       final crossCount = constraints.maxWidth > 1200 ? 3 : (constraints.maxWidth > 700 ? 2 : 1);
+      final double aspect = constraints.maxWidth > 1200
+          ? 2.2
+          : (constraints.maxWidth > 700
+              ? 2.1
+              : (constraints.maxWidth > 400 ? 1.85 : 1.55));
+
       return GridView.builder(
         itemCount: products.length,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossCount,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 2.1,
+          childAspectRatio: aspect,
         ),
         itemBuilder: (context, index) {
           final prod = products[index];

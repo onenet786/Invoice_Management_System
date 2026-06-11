@@ -254,40 +254,55 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Company & Client columns
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final fromCol = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('FROM:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: theme.hintColor)),
+                    const SizedBox(height: 8),
+                    Text(comp.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(comp.address, style: const TextStyle(fontSize: 12)),
+                    Text('Tax ID: ${comp.taxId}', style: const TextStyle(fontSize: 12)),
+                  ],
+                );
+
+                final billToCol = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('BILL TO:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: theme.hintColor)),
+                    const SizedBox(height: 8),
+                    Text(client.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(client.email, style: const TextStyle(fontSize: 12)),
+                    Text(client.phone, style: const TextStyle(fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Text('Billing Address:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: theme.hintColor)),
+                    Text(client.billingAddress, style: const TextStyle(fontSize: 12)),
+                  ],
+                );
+
+                if (constraints.maxWidth > 500) {
+                  return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('FROM:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: theme.hintColor)),
-                      const SizedBox(height: 8),
-                      Text(comp.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      const SizedBox(height: 4),
-                      Text(comp.address, style: const TextStyle(fontSize: 12)),
-                      Text('Tax ID: ${comp.taxId}', style: const TextStyle(fontSize: 12)),
+                      Expanded(child: fromCol),
+                      const SizedBox(width: 16),
+                      Expanded(child: billToCol),
                     ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
+                  );
+                } else {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('BILL TO:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: theme.hintColor)),
-                      const SizedBox(height: 8),
-                      Text(client.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      const SizedBox(height: 4),
-                      Text(client.email, style: const TextStyle(fontSize: 12)),
-                      Text(client.phone, style: const TextStyle(fontSize: 12)),
-                      const SizedBox(height: 4),
-                      Text('Billing Address:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: theme.hintColor)),
-                      Text(client.billingAddress, style: const TextStyle(fontSize: 12)),
+                      fromCol,
+                      const SizedBox(height: 24),
+                      billToCol,
                     ],
-                  ),
-                ),
-              ],
+                  );
+                }
+              },
             ),
             const SizedBox(height: 24),
             const Divider(),
@@ -401,68 +416,78 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            Table(
-              columnWidths: const {
-                0: FlexColumnWidth(3),
-                1: FlexColumnWidth(1),
-                2: FlexColumnWidth(1.5),
-                3: FlexColumnWidth(1.2),
-                4: FlexColumnWidth(1.8),
-              },
-              children: [
-                TableRow(
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.withValues(alpha: 0.05),
-                    border: const Border(bottom: BorderSide(color: Colors.grey)),
-                  ),
-                  children: const [
-                    Padding(padding: EdgeInsets.all(10), child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold))),
-                    Padding(padding: EdgeInsets.all(10), child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                    Padding(padding: EdgeInsets.all(10), child: Text('Rate', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
-                    Padding(padding: EdgeInsets.all(10), child: Text('Tax %', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                    Padding(padding: EdgeInsets.all(10), child: Text('Total', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
-                  ],
-                ),
-                ..._currentInvoice.items.map((item) {
-                  return TableRow(
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5))),
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            const SizedBox(height: 2),
-                            Text(
-                              'SKU ID: ${item.productId}',
-                              style: TextStyle(fontSize: 11, color: theme.hintColor, fontFamily: 'monospace'),
-                            ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: constraints.maxWidth > 600 ? constraints.maxWidth : 600,
+                    child: Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(3),
+                        1: FlexColumnWidth(1),
+                        2: FlexColumnWidth(1.5),
+                        3: FlexColumnWidth(1.2),
+                        4: FlexColumnWidth(1.8),
+                      },
+                      children: [
+                        TableRow(
+                          decoration: BoxDecoration(
+                            color: Colors.indigo.withValues(alpha: 0.05),
+                            border: const Border(bottom: BorderSide(color: Colors.grey)),
+                          ),
+                          children: const [
+                            Padding(padding: EdgeInsets.all(10), child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold))),
+                            Padding(padding: EdgeInsets.all(10), child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
+                            Padding(padding: EdgeInsets.all(10), child: Text('Rate', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
+                            Padding(padding: EdgeInsets.all(10), child: Text('Tax %', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
+                            Padding(padding: EdgeInsets.all(10), child: Text('Total', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
                           ],
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(item.quantity.toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(formatter.format(item.unitPrice), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13)),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text('${item.taxRate.toStringAsFixed(0)}%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(formatter.format(item.lineTotal), textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      ),
-                    ],
-                  );
-                }),
-              ],
+                        ..._currentInvoice.items.map((item) {
+                          return TableRow(
+                            decoration: BoxDecoration(
+                              border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5))),
+                            ),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'SKU ID: ${item.productId}',
+                                      style: TextStyle(fontSize: 11, color: theme.hintColor, fontFamily: 'monospace'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text(item.quantity.toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text(formatter.format(item.unitPrice), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13)),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text('${item.taxRate.toStringAsFixed(0)}%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text(formatter.format(item.lineTotal), textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              ),
+                            ],
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
