@@ -503,7 +503,8 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                   validator: (v) => v == null || v.trim().isEmpty ? 'SKU Code is required' : null,
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
+                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _category,
                   decoration: const InputDecoration(
                     labelText: 'Product Category *',
@@ -523,42 +524,56 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                   },
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _priceController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Unit Price *',
-                          prefixIcon: Icon(Icons.attach_money),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Price is required';
-                          if (double.tryParse(v) == null) return 'Enter a number';
-                          return null;
-                        },
+                 LayoutBuilder(
+                  builder: (context, constraints) {
+                    final priceField = TextFormField(
+                      controller: _priceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Unit Price *',
+                        prefixIcon: Icon(Icons.attach_money),
+                        border: OutlineInputBorder(),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _taxController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Standard Tax Rate (%)',
-                          prefixIcon: Icon(Icons.percent),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Tax rate is required';
-                          if (double.tryParse(v) == null) return 'Enter a number';
-                          return null;
-                        },
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Price is required';
+                        if (double.tryParse(v) == null) return 'Enter a number';
+                        return null;
+                      },
+                    );
+
+                    final taxField = TextFormField(
+                      controller: _taxController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Standard Tax Rate (%)',
+                        prefixIcon: Icon(Icons.percent),
+                        border: OutlineInputBorder(),
                       ),
-                    ),
-                  ],
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Tax rate is required';
+                        if (double.tryParse(v) == null) return 'Enter a number';
+                        return null;
+                      },
+                    );
+
+                    if (constraints.maxWidth > 500) {
+                      return Row(
+                        children: [
+                          Expanded(child: priceField),
+                          const SizedBox(width: 16),
+                          Expanded(child: taxField),
+                        ],
+                      );
+                    } else {
+                      return Column(
+                        children: [
+                          priceField,
+                          const SizedBox(height: 16),
+                          taxField,
+                        ],
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

@@ -297,6 +297,7 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
 
           // Client Dropdown Selector
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _selectedClientId,
             decoration: const InputDecoration(
               labelText: 'Select Client *',
@@ -318,74 +319,86 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Issue Date picker
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _issueDate,
-                      firstDate: DateTime(2025),
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _issueDate = picked;
-                        // Automatically push due date forward if due date is behind issue date
-                        if (_dueDate.isBefore(_issueDate)) {
-                          _dueDate = _issueDate.add(const Duration(days: 30));
-                        }
-                      });
-                    }
-                  },
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Invoice Issue Date *',
-                      prefixIcon: Icon(Icons.calendar_today_outlined),
-                      border: OutlineInputBorder(),
-                    ),
-                    child: Text(DateFormat('yyyy-MM-dd').format(_issueDate)),
+          // Issue & Due Date pickers
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final issueDatePicker = InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _issueDate,
+                    firstDate: DateTime(2025),
+                    lastDate: DateTime(2030),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _issueDate = picked;
+                      // Automatically push due date forward if due date is behind issue date
+                      if (_dueDate.isBefore(_issueDate)) {
+                        _dueDate = _issueDate.add(const Duration(days: 30));
+                      }
+                    });
+                  }
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Invoice Issue Date *',
+                    prefixIcon: Icon(Icons.calendar_today_outlined),
+                    border: OutlineInputBorder(),
                   ),
+                  child: Text(DateFormat('yyyy-MM-dd').format(_issueDate)),
                 ),
-              ),
-              const SizedBox(width: 16),
+              );
 
-              // Due Date picker
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _dueDate,
-                      firstDate: _issueDate,
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _dueDate = picked;
-                      });
-                    }
-                  },
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Invoice Due Date *',
-                      prefixIcon: Icon(Icons.calendar_month_outlined),
-                      border: OutlineInputBorder(),
-                    ),
-                    child: Text(
-                      DateFormat('yyyy-MM-dd').format(_dueDate),
-                      style: TextStyle(
-                        color: _dueDate.isBefore(DateTime.now()) && _status != InvoiceStatus.paid
-                            ? Colors.red
-                            : null,
-                      ),
+              final dueDatePicker = InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _dueDate,
+                    firstDate: _issueDate,
+                    lastDate: DateTime(2030),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _dueDate = picked;
+                    });
+                  }
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Invoice Due Date *',
+                    prefixIcon: Icon(Icons.calendar_month_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  child: Text(
+                    DateFormat('yyyy-MM-dd').format(_dueDate),
+                    style: TextStyle(
+                      color: _dueDate.isBefore(DateTime.now()) && _status != InvoiceStatus.paid
+                          ? Colors.red
+                          : null,
                     ),
                   ),
                 ),
-              ),
-            ],
+              );
+
+              if (constraints.maxWidth > 500) {
+                return Row(
+                  children: [
+                    Expanded(child: issueDatePicker),
+                    const SizedBox(width: 16),
+                    Expanded(child: dueDatePicker),
+                  ],
+                );
+              } else {
+                return Column(
+                  children: [
+                    issueDatePicker,
+                    const SizedBox(height: 16),
+                    dueDatePicker,
+                  ],
+                );
+              }
+            },
           ),
           const SizedBox(height: 20),
 
@@ -437,6 +450,7 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 const Text('Select Product from Inventory Catalog:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<ProductModel>(
+                  isExpanded: true,
                   initialValue: _tempSelectedProduct,
                   hint: const Text('Choose a pre-seeded product...'),
                   decoration: const InputDecoration(
@@ -453,44 +467,57 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 ),
                 if (_tempSelectedProduct != null) ...[
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      // Price
-                      Expanded(
-                        child: TextFormField(
-                          controller: _tempPriceController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: const InputDecoration(
-                            labelText: 'Custom Unit Price',
-                            border: OutlineInputBorder(),
-                          ),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final priceField = TextFormField(
+                        controller: _tempPriceController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Custom Unit Price',
+                          border: OutlineInputBorder(),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Tax Rate
-                      Expanded(
-                        child: TextFormField(
-                          controller: _tempTaxController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: const InputDecoration(
-                            labelText: 'Custom Tax (%)',
-                            border: OutlineInputBorder(),
-                          ),
+                      );
+
+                      final taxField = TextFormField(
+                        controller: _tempTaxController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Custom Tax (%)',
+                          border: OutlineInputBorder(),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Qty
-                      Expanded(
-                        child: TextFormField(
-                          controller: _tempQtyController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Quantity',
-                            border: OutlineInputBorder(),
-                          ),
+                      );
+
+                      final qtyField = TextFormField(
+                        controller: _tempQtyController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Quantity',
+                          border: OutlineInputBorder(),
                         ),
-                      ),
-                    ],
+                      );
+
+                      if (constraints.maxWidth > 500) {
+                        return Row(
+                          children: [
+                            Expanded(child: priceField),
+                            const SizedBox(width: 12),
+                            Expanded(child: taxField),
+                            const SizedBox(width: 12),
+                            Expanded(child: qtyField),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          children: [
+                            priceField,
+                            const SizedBox(height: 12),
+                            taxField,
+                            const SizedBox(height: 12),
+                            qtyField,
+                          ],
+                        );
+                      }
+                    },
                   ),
                   const SizedBox(height: 16),
                   Align(
@@ -703,6 +730,7 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
         const Text('Select Initial Status:', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         DropdownButtonFormField<InvoiceStatus>(
+          isExpanded: true,
           initialValue: _status,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),

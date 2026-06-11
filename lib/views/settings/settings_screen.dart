@@ -188,49 +188,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 validator: (v) => v == null || v.trim().isEmpty ? 'Company name is required' : null,
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: TextFormField(
-                      controller: _taxIdController,
-                      enabled: canEdit,
-                      decoration: const InputDecoration(
-                        labelText: 'Company Tax ID (GST/VAT)',
-                        prefixIcon: Icon(Icons.description_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Tax ID is required' : null,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final taxField = TextFormField(
+                    controller: _taxIdController,
+                    enabled: canEdit,
+                    decoration: const InputDecoration(
+                      labelText: 'Company Tax ID (GST/VAT)',
+                      prefixIcon: Icon(Icons.description_outlined),
+                      border: OutlineInputBorder(),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _selectedCurrency,
-                      decoration: const InputDecoration(
-                        labelText: 'Currency',
-                        prefixIcon: Icon(Icons.monetization_on_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: '\$', child: Text('USD (\$)')),
-                        DropdownMenuItem(value: '€', child: Text('EUR (€)')),
-                        DropdownMenuItem(value: '£', child: Text('GBP (£)')),
-                        DropdownMenuItem(value: 'PKR', child: Text('PKR (Rs)')),
-                        DropdownMenuItem(value: '¥', child: Text('JPY (¥)')),
-                      ],
-                      onChanged: canEdit
-                          ? (val) {
-                              if (val != null) {
-                                setState(() {
-                                  _selectedCurrency = val;
-                                });
-                              }
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Tax ID is required' : null,
+                  );
+
+                  final currencyDropdown = DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    initialValue: _selectedCurrency,
+                    decoration: const InputDecoration(
+                      labelText: 'Currency',
+                      prefixIcon: Icon(Icons.monetization_on_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: '\$', child: Text('USD (\$)')),
+                      DropdownMenuItem(value: '€', child: Text('EUR (€)')),
+                      DropdownMenuItem(value: '£', child: Text('GBP (£)')),
+                      DropdownMenuItem(value: 'PKR', child: Text('PKR (Rs)')),
+                      DropdownMenuItem(value: '¥', child: Text('JPY (¥)')),
+                    ],
+                    onChanged: canEdit
+                        ? (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedCurrency = val;
+                              });
                             }
-                          : null,
-                    ),
-                  ),
-                ],
+                          }
+                        : null,
+                  );
+
+                  if (constraints.maxWidth > 500) {
+                    return Row(
+                      children: [
+                        Expanded(flex: 2, child: taxField),
+                        const SizedBox(width: 16),
+                        Expanded(child: currencyDropdown),
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      children: [
+                        taxField,
+                        const SizedBox(height: 16),
+                        currencyDropdown,
+                      ],
+                    );
+                  }
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(

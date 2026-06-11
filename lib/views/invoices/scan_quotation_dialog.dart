@@ -160,6 +160,7 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
                     const Text('1. Select handwritten quote template to scan:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ScannedQuoteTemplate>(
+                      isExpanded: true,
                       initialValue: _selectedTemplate,
                       hint: const Text('Select notebook estimate quote...'),
                       decoration: const InputDecoration(border: OutlineInputBorder()),
