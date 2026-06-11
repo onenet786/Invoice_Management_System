@@ -26,14 +26,14 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     _currentInvoice = widget.invoice;
   }
 
-  void _markAsPaid() async {
+  void _updateStatus(InvoiceStatus newStatus) async {
     final state = Provider.of<AppStateProvider>(context, listen: false);
     if (!state.canWrite) {
       _showViewerRestriction();
       return;
     }
 
-    final updated = _currentInvoice.copyWith(status: InvoiceStatus.paid);
+    final updated = _currentInvoice.copyWith(status: newStatus);
     await state.updateInvoice(updated);
     setState(() {
       _currentInvoice = updated;
@@ -41,9 +41,71 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invoice marked as Paid.')),
+        SnackBar(content: Text('Invoice status updated to ${_getStatusLabel(newStatus)}.')),
       );
     }
+  }
+
+  String _getStatusLabel(InvoiceStatus status) {
+    switch (status) {
+      case InvoiceStatus.paid:
+        return 'Paid';
+      case InvoiceStatus.sent:
+        return 'Sent';
+      case InvoiceStatus.overdue:
+        return 'Overdue';
+      case InvoiceStatus.partiallyPaid:
+        return 'Partially Paid';
+      case InvoiceStatus.draft:
+        return 'Draft';
+    }
+  }
+
+  Widget _buildStatusBadge(InvoiceStatus status) {
+    Color bg;
+    Color fg;
+    String label;
+
+    switch (status) {
+      case InvoiceStatus.paid:
+        bg = Colors.green.shade50;
+        fg = Colors.green.shade700;
+        label = 'Paid';
+        break;
+      case InvoiceStatus.sent:
+        bg = Colors.blue.shade50;
+        fg = Colors.blue.shade700;
+        label = 'Sent';
+        break;
+      case InvoiceStatus.overdue:
+        bg = Colors.red.shade50;
+        fg = Colors.red.shade700;
+        label = 'Overdue';
+        break;
+      case InvoiceStatus.partiallyPaid:
+        bg = Colors.amber.shade50;
+        fg = Colors.amber.shade800;
+        label = 'Part. Paid';
+        break;
+      case InvoiceStatus.draft:
+        bg = Colors.grey.shade100;
+        fg = Colors.grey.shade700;
+        label = 'Draft';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: fg.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.bold),
+      ),
+    );
   }
 
   void _sendEmail() async {
@@ -200,46 +262,155 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   }
 
   Widget _buildActionsBanner(AppStateProvider state, ThemeData theme) {
-    return Card(
-      color: Colors.indigo.shade50.withValues(alpha: 0.15),
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: Colors.indigo.shade200.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            const Icon(Icons.receipt_long, color: Colors.indigo, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+
+        final bannerContent = [
+          const Icon(Icons.receipt_long, color: Colors.indigo, size: 28),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
-                  Text(
-                    'Invoice is currently: ${_currentInvoice.status.name.toUpperCase()}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                  const Text(
+                    'Invoice Status:',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
                   ),
+                  _buildStatusBadge(_currentInvoice.status),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Ensure details match client terms before dispatching.',
+                style: TextStyle(fontSize: 11, color: theme.hintColor),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          PopupMenuButton<InvoiceStatus>(
+            onSelected: _updateStatus,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.indigo,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.edit, color: Colors.white, size: 18),
+                  SizedBox(width: 8),
                   Text(
-                    'Ensure details match client terms before dispatching.',
-                    style: TextStyle(fontSize: 11, color: theme.hintColor),
+                    'Update Status',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
+                  SizedBox(width: 4),
+                  Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
                 ],
               ),
             ),
-            if (state.canWrite && _currentInvoice.status != InvoiceStatus.paid)
-              ElevatedButton.icon(
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Mark as Paid'),
-                onPressed: _markAsPaid,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: InvoiceStatus.draft,
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_note, color: Colors.grey, size: 18),
+                    SizedBox(width: 8),
+                    Text('Draft'),
+                  ],
                 ),
               ),
-          ],
-        ),
-      ),
+              const PopupMenuItem(
+                value: InvoiceStatus.sent,
+                child: Row(
+                  children: [
+                    Icon(Icons.send_outlined, color: Colors.blue, size: 18),
+                    SizedBox(width: 8),
+                    Text('Sent'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: InvoiceStatus.paid,
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: Colors.green, size: 18),
+                    SizedBox(width: 8),
+                    Text('Paid'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: InvoiceStatus.partiallyPaid,
+                child: Row(
+                  children: [
+                    Icon(Icons.star_half, color: Colors.amber, size: 18),
+                    SizedBox(width: 8),
+                    Text('Partially Paid'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: InvoiceStatus.overdue,
+                child: Row(
+                  children: [
+                    Icon(Icons.report_gmailerrorred, color: Colors.red, size: 18),
+                    SizedBox(width: 8),
+                    Text('Overdue'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ];
+
+        return Card(
+          color: Colors.indigo.shade50.withValues(alpha: 0.15),
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: Colors.indigo.shade200.withValues(alpha: 0.5)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: isMobile
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          bannerContent[0], // Icon
+                          const SizedBox(width: 12),
+                          Expanded(child: bannerContent[2]), // Title and badge Column
+                        ],
+                      ),
+                      if (state.canWrite) ...[
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: bannerContent[4], // Dropdown button
+                          ),
+                        ),
+                      ],
+                    ],
+                  )
+                : Row(
+                    children: [
+                      bannerContent[0], // Icon
+                      const SizedBox(width: 12),
+                      Expanded(child: bannerContent[2]), // Column
+                      if (state.canWrite) bannerContent[4], // Dropdown button
+                    ],
+                  ),
+          ),
+        );
+      },
     );
   }
 
