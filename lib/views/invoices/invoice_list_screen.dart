@@ -152,29 +152,27 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Invoices',
-                        style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Monitor full invoice lifecycles, send payment reminders, and download PDFs.',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                if (state.canWrite)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final headerText = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Invoices',
+                      style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      'Monitor full invoice lifecycles, send payment reminders, and download PDFs.',
+                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+                    ),
+                  ],
+                );
+
+                final actionButtons = Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    if (state.canWrite) ...[
                       OutlinedButton.icon(
                         onPressed: () {
                           showDialog(
@@ -190,7 +188,6 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
                       ),
-                      const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: () => _openInvoiceWizard(),
                         icon: const Icon(Icons.add_card),
@@ -202,8 +199,29 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                         ),
                       ),
                     ],
-                  ),
-              ],
+                  ],
+                );
+
+                if (constraints.maxWidth > 700) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: headerText),
+                      const SizedBox(width: 16),
+                      actionButtons,
+                    ],
+                  );
+                } else {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      headerText,
+                      const SizedBox(height: 16),
+                      actionButtons,
+                    ],
+                  );
+                }
+              },
             ),
             const SizedBox(height: 24),
 
