@@ -194,13 +194,14 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
     final state = Provider.of<AppStateProvider>(context);
     final theme = Theme.of(context);
     final isEdit = widget.invoice != null;
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(isEdit ? 'Invoice Wizard: Edit $_invoiceNumber' : 'Invoice Wizard: Create Invoice'),
       ),
       body: Stepper(
-        type: StepperType.horizontal,
+        type: isMobile ? StepperType.vertical : StepperType.horizontal,
         currentStep: _currentStep,
         onStepContinue: () {
           if (_currentStep == 0) {
