@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/user_model.dart';
 import '../models/company_model.dart';
 import '../models/client_model.dart';
@@ -213,15 +214,14 @@ class AppStateProvider extends ChangeNotifier {
 
   // Sequential Invoice Number Generator
   String generateNextInvoiceNumber() {
-    final year = DateTime.now().year;
-    final prefix = 'INV-$year-';
+    final datePrefix = DateFormat('ddMMMyyyy-').format(DateTime.now());
     int maxSeq = 0;
 
     for (var inv in _invoices) {
-      if (inv.invoiceNumber.startsWith(prefix)) {
+      if (inv.invoiceNumber.startsWith(datePrefix)) {
         final parts = inv.invoiceNumber.split('-');
-        if (parts.length == 3) {
-          final seqNum = int.tryParse(parts[2]);
+        if (parts.length == 2) {
+          final seqNum = int.tryParse(parts[1]);
           if (seqNum != null && seqNum > maxSeq) {
             maxSeq = seqNum;
           }
@@ -230,7 +230,7 @@ class AppStateProvider extends ChangeNotifier {
     }
 
     final nextSeq = maxSeq + 1;
-    return '$prefix${nextSeq.toString().padLeft(4, '0')}';
+    return '$datePrefix${nextSeq.toString().padLeft(4, '0')}';
   }
 
   // Analytics helper metrics
