@@ -137,11 +137,13 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
     final theme = Theme.of(context);
 
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.document_scanner, color: Colors.indigo, size: 28),
-          SizedBox(width: 12),
-          Text('Scan Handwritten Quotation'),
+          const Icon(Icons.document_scanner, color: Colors.indigo, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: const Text('Scan Handwritten Quotation'),
+          ),
         ],
       ),
       content: SizedBox(
