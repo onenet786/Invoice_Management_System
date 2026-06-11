@@ -20,6 +20,8 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
   bool _isScanned = false;
   double _progress = 0.0;
   List<String> _logs = [];
+  bool _isCameraMode = false;
+  bool _isCameraCaptured = false;
 
   late AnimationController _animController;
 
@@ -159,13 +161,67 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('1. Select handwritten quote template to scan:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text('1. Choose Handwriting Source:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _isCameraMode = true;
+                                _isCameraCaptured = false;
+                                _selectedTemplate = null;
+                                _isScanned = false;
+                                _isScanning = false;
+                                _logs.clear();
+                                _progress = 0.0;
+                              });
+                            },
+                            icon: const Icon(Icons.camera_alt_outlined),
+                            label: const Text('Use Camera'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.indigo,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _isCameraMode = false;
+                                _isCameraCaptured = false;
+                                _selectedTemplate = OcrScanService.sampleTemplates[0];
+                                _isScanned = false;
+                                _isScanning = false;
+                                _logs.clear();
+                                _progress = 0.0;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Simulated Gallery: Loaded handwritten Estimate Quote.')),
+                              );
+                            },
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('Upload Photo'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<ScannedQuoteTemplate>(
                       isExpanded: true,
                       initialValue: _selectedTemplate,
-                      hint: const Text('Select notebook estimate quote...'),
-                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                      hint: const Text('Or select notebook estimate template...'),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
                       items: OcrScanService.sampleTemplates.map((t) {
                         return DropdownMenuItem(
                           value: t,
@@ -175,6 +231,8 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
                       onChanged: (val) {
                         setState(() {
                           _selectedTemplate = val;
+                          _isCameraMode = false;
+                          _isCameraCaptured = false;
                           _isScanned = false;
                           _isScanning = false;
                           _logs.clear();
@@ -300,14 +358,100 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
   }
 
   Widget _buildHandwritingSheet(ThemeData theme) {
+    if (_isCameraMode) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned(
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.5), width: 2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              left: 12,
+              child: Row(
+                children: [
+                  const _FlashingRedDot(),
+                  const SizedBox(width: 6),
+                  Text(
+                    'CAMERA ACTIVE',
+                    style: TextStyle(
+                      color: Colors.red.shade400,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.camera_alt, color: Colors.green.shade400, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  'Align handwritten quote in grid',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _isCameraMode = false;
+                      _isCameraCaptured = true;
+                      _selectedTemplate = OcrScanService.sampleTemplates[0];
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Shutter clicked: Captured quotation sheet successfully.')),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Capture Photo'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
     if (_selectedTemplate == null) {
       return Container(
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Center(
-          child: Text('Select estimate template above to preview document.'),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.document_scanner, size: 40, color: theme.hintColor.withValues(alpha: 0.5)),
+              const SizedBox(height: 12),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  'Select estimate template, use camera, or upload image to preview document.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -322,17 +466,48 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.amber.shade300),
       ),
-      child: SingleChildScrollView(
-        child: Text(
-          _selectedTemplate!.handwrittenText,
-          style: TextStyle(
-            fontFamily: 'serif',
-            fontSize: 13,
-            fontStyle: FontStyle.italic,
-            color: isLight ? Colors.blue.shade900 : Colors.amber.shade100,
-            height: 1.6,
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 24.0),
+              child: Text(
+                _selectedTemplate!.handwrittenText,
+                style: TextStyle(
+                  fontFamily: 'serif',
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  color: isLight ? Colors.blue.shade900 : Colors.amber.shade100,
+                  height: 1.6,
+                ),
+              ),
+            ),
           ),
-        ),
+          if (_isCameraCaptured)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade600,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.camera_alt, color: Colors.white, size: 12),
+                    SizedBox(width: 6),
+                    Text(
+                      'Captured Photo Preview',
+                      style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -372,6 +547,47 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FlashingRedDot extends StatefulWidget {
+  const _FlashingRedDot();
+
+  @override
+  State<_FlashingRedDot> createState() => _FlashingRedDotState();
+}
+
+class _FlashingRedDotState extends State<_FlashingRedDot> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: const BoxDecoration(
+          color: Colors.red,
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }
