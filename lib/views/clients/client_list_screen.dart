@@ -104,19 +104,22 @@ class _ClientListScreenState extends State<ClientListScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Client Database',
-                      style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Manage customer listings, contact details, and billing directories.',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Client Database',
+                        style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Manage customer listings, contact details, and billing directories.',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 16),
                 if (state.canWrite)
                   ElevatedButton.icon(
                     onPressed: () => _openClientForm(),

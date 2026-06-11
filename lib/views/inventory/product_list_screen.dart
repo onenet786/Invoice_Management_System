@@ -117,19 +117,22 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Inventory Catalog',
-                      style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Configure products, standard market rates, custom SKUs, and categories.',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Inventory Catalog',
+                        style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Configure products, standard market rates, custom SKUs, and categories.',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 16),
                 if (state.canWrite)
                   ElevatedButton.icon(
                     onPressed: () => _openProductForm(),

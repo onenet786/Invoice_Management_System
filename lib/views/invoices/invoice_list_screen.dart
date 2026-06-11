@@ -155,19 +155,22 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Invoices',
-                      style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Monitor full invoice lifecycles, send payment reminders, and download PDFs.',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Invoices',
+                        style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Monitor full invoice lifecycles, send payment reminders, and download PDFs.',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 16),
                 if (state.canWrite)
                   Row(
                     mainAxisSize: MainAxisSize.min,
