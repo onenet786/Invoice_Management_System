@@ -311,75 +311,138 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                             },
                             borderRadius: BorderRadius.circular(10),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
-                              child: Row(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Leading sequential details
-                                  Expanded(
-                                    flex: 2,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          inv.invoiceNumber,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.indigo),
+                                  // Top row: Invoice number on left, Status badge & action menu on right
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        inv.invoiceNumber,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.indigo,
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          client.name,
-                                          style: const TextStyle(fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildStatusBadge(inv.status),
+                                          const SizedBox(width: 8),
+                                          _buildInvoiceActionMenu(inv),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                  // Dates
-                                  Expanded(
-                                    flex: 2,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Issued: ${inv.issueDate.toIso8601String().split("T")[0]}',
-                                          style: TextStyle(fontSize: 12, color: theme.hintColor),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Due: ${inv.dueDate.toIso8601String().split("T")[0]}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: inv.status == InvoiceStatus.overdue ? Colors.red : theme.hintColor,
-                                            fontWeight: inv.status == InvoiceStatus.overdue ? FontWeight.bold : FontWeight.normal,
+                                  const SizedBox(height: 12),
+                                  const Divider(height: 1, thickness: 0.5),
+                                  const SizedBox(height: 12),
+                                  // Layout builder for details section
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final isMobile = constraints.maxWidth < 500;
+
+                                      final clientInfo = Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            client.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                        ),
-                                      ],
-                                    ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Items: ${inv.items.length}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: theme.hintColor,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+
+                                      final datesInfo = Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Issued: ${inv.issueDate.toIso8601String().split("T")[0]}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: theme.hintColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Due: ${inv.dueDate.toIso8601String().split("T")[0]}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: inv.status == InvoiceStatus.overdue
+                                                  ? Colors.red
+                                                  : theme.hintColor,
+                                              fontWeight: inv.status == InvoiceStatus.overdue
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+
+                                      final totalInfo = Column(
+                                        crossAxisAlignment: isMobile
+                                            ? CrossAxisAlignment.start
+                                            : CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            formatter.format(inv.grandTotal),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: Colors.indigo,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Grand Total',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: theme.hintColor,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+
+                                      if (isMobile) {
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            clientInfo,
+                                            const SizedBox(height: 12),
+                                            datesInfo,
+                                            const SizedBox(height: 12),
+                                            totalInfo,
+                                          ],
+                                        );
+                                      } else {
+                                        return Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(flex: 3, child: clientInfo),
+                                            const SizedBox(width: 16),
+                                            Expanded(flex: 3, child: datesInfo),
+                                            const SizedBox(width: 16),
+                                            Expanded(flex: 2, child: totalInfo),
+                                          ],
+                                        );
+                                      }
+                                    },
                                   ),
-                                  // Status Badge
-                                  Expanded(
-                                    child: Center(
-                                      child: _buildStatusBadge(inv.status),
-                                    ),
-                                  ),
-                                  // Totals
-                                  Expanded(
-                                    flex: 2,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          formatter.format(inv.grandTotal),
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                        ),
-                                        Text(
-                                          'Items: ${inv.items.length}',
-                                          style: TextStyle(fontSize: 11, color: theme.hintColor),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  // Actions drop menu
-                                  _buildInvoiceActionMenu(inv),
                                 ],
                               ),
                             ),
