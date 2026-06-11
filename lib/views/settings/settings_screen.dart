@@ -1,5 +1,13 @@
+import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
 import '../../providers/app_state_provider.dart';
 import '../../models/company_model.dart';
 import '../../models/user_model.dart';
@@ -112,6 +120,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               _buildPreferencesCard(theme, state),
                               const SizedBox(height: 20),
                               _buildTestingSandboxCard(theme, state),
+                              const SizedBox(height: 20),
+                              _buildBackupRestoreCard(theme, state),
                             ],
                           ),
                         ),
@@ -125,6 +135,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildPreferencesCard(theme, state),
                         const SizedBox(height: 20),
                         _buildTestingSandboxCard(theme, state),
+                        const SizedBox(height: 20),
+                        _buildBackupRestoreCard(theme, state),
                       ],
                     );
                   }
@@ -419,5 +431,317 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildBackupRestoreCard(ThemeData theme, AppStateProvider state) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.backup_outlined, color: theme.colorScheme.primary, size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  'Backup & Recovery',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Export or import your company profiles, clients list, inventory logs, and invoice histories to prevent data loss.',
+              style: TextStyle(color: theme.hintColor, fontSize: 12),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _exportBackup(state),
+                    icon: const Icon(Icons.save_alt, size: 18),
+                    label: const Text('Save to File'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _restoreBackup(state),
+                    icon: const Icon(Icons.open_in_browser, size: 18),
+                    label: const Text('Restore from File'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _uploadBackupToGoogleDrive(state),
+                icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                label: const Text('Upload to Google Drive'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _exportBackup(AppStateProvider state) async {
+    try {
+      final String backupStr = state.exportBackupData();
+      final Uint8List bytes = utf8.encode(backupStr);
+      
+      String? outputPath;
+      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        outputPath = await FilePicker.saveFile(
+          dialogTitle: 'Select Backup Destination',
+          fileName: 'ims_backup_${DateTime.now().millisecondsSinceEpoch}.json',
+          type: FileType.custom,
+          allowedExtensions: ['json'],
+          bytes: bytes,
+        );
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+        outputPath = '${directory.path}/ims_backup_${DateTime.now().millisecondsSinceEpoch}.json';
+        final file = File(outputPath);
+        await file.writeAsString(backupStr);
+      }
+
+      if (outputPath == null) {
+        return;
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Backup saved successfully to: $outputPath'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save backup file: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _restoreBackup(AppStateProvider state) async {
+    try {
+      final FilePickerResult? result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result == null || result.files.single.path == null) {
+        return;
+      }
+
+      final String filePath = result.files.single.path!;
+      final File file = File(filePath);
+      final String jsonString = await file.readAsString();
+
+      if (!mounted) return;
+
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Confirm Restore'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    border: Border.all(color: Colors.red.shade200),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade800, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'WARNING: Restoring will overwrite all current settings, client lists, inventory logs, and invoice records. This action cannot be undone.',
+                          style: TextStyle(
+                            color: Colors.red.shade900,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Are you sure you want to restore the database from the selected file?'),
+                const SizedBox(height: 8),
+                Text(
+                  'File: ${filePath.split(Platform.pathSeparator).last}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Restore Database'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirm == true) {
+        final bool success = await state.restoreBackupData(jsonString);
+        if (!mounted) return;
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Database restored successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Invalid backup file structure. Please confirm JSON is valid.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading backup file: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _uploadBackupToGoogleDrive(AppStateProvider state) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+            ),
+            SizedBox(width: 16),
+            Text('Connecting to Google Drive...'),
+          ],
+        ),
+        duration: Duration(days: 1),
+      ),
+    );
+
+    try {
+      // Initialize the singleton instance (must be done before authenticate)
+      await GoogleSignIn.instance.initialize();
+
+      final account = await GoogleSignIn.instance.authenticate();
+
+      // Request authorization for Google Drive API scope
+      final authorization = await account.authorizationClient.authorizationForScopes([
+        drive.DriveApi.driveFileScope,
+      ]);
+
+      if (authorization == null) {
+        throw 'Failed to acquire access token for Google Drive.';
+      }
+
+      final authHeaders = {
+        "Authorization": "Bearer ${authorization.accessToken}",
+        "X-Goog-AuthUser": "0",
+      };
+
+      final authenticateClient = GoogleAuthClient(authHeaders);
+      final driveApi = drive.DriveApi(authenticateClient);
+
+      final driveFile = drive.File();
+      driveFile.name = 'ims_backup_${DateTime.now().millisecondsSinceEpoch}.json';
+      driveFile.mimeType = 'application/json';
+
+      final String backupStr = state.exportBackupData();
+      final Uint8List bytes = utf8.encode(backupStr);
+      final Stream<List<int>> mediaStream = Stream.value(bytes);
+      final drive.Media media = drive.Media(mediaStream, bytes.length);
+
+      final responseFile = await driveApi.files.create(driveFile, uploadMedia: media);
+
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Backup uploaded to Google Drive successfully! ID: ${responseFile.id}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Upload failed. Ensure Google OAuth credentials are configured for this app. Error: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    }
+  }
+}
+
+class GoogleAuthClient extends http.BaseClient {
+  final Map<String, String> _headers;
+  final http.Client _client = http.Client();
+
+  GoogleAuthClient(this._headers);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    request.headers.addAll(_headers);
+    return _client.send(request);
   }
 }

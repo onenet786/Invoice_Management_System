@@ -196,31 +196,41 @@ class _ClientListScreenState extends State<ClientListScreen> {
                             ),
                             subtitle: Padding(
                               padding: const EdgeInsets.only(top: 6.0),
-                              child: Wrap(
-                                spacing: 16,
-                                runSpacing: 4,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Icon(Icons.email_outlined, size: 14, color: Colors.grey),
-                                      const SizedBox(width: 4),
-                                      Text(client.email.isNotEmpty ? client.email : 'No email'),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          client.email.isNotEmpty ? client.email : 'No email',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                     ],
                                   ),
+                                  const SizedBox(height: 4),
                                   Row(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Icon(Icons.phone_outlined, size: 14, color: Colors.grey),
-                                      const SizedBox(width: 4),
-                                      Text(client.phone.isNotEmpty ? client.phone : 'No phone'),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          client.phone.isNotEmpty ? client.phone : 'No phone',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                     ],
                                   ),
+                                  const SizedBox(height: 4),
                                   Row(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
-                                      const SizedBox(width: 4),
+                                      const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
                                           client.billingAddress,

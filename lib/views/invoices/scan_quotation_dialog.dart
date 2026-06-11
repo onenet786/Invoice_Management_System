@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:camera/camera.dart';
 import '../../providers/app_state_provider.dart';
 import '../../models/invoice_model.dart';
 import '../../models/invoice_item_model.dart';
@@ -27,6 +28,10 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
   String? _infoMessage;
   XFile? _pickedImage;
 
+  CameraController? _cameraController;
+  List<CameraDescription> _cameras = [];
+  bool _isCameraInitializing = false;
+
   late AnimationController _animController;
 
   @override
@@ -41,6 +46,7 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
   @override
   void dispose() {
     _animController.dispose();
+    _cameraController?.dispose();
     super.dispose();
   }
 
@@ -140,6 +146,7 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
 
   Future<void> _pickImageFromGallery() async {
     try {
+      await _disposeCamera();
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
@@ -196,275 +203,389 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
     }
   }
 
+  Future<void> _initCamera() async {
+    setState(() {
+      _isCameraInitializing = true;
+      _infoMessage = null;
+    });
+    try {
+      _cameras = await availableCameras();
+      if (_cameras.isNotEmpty) {
+        await _disposeCamera();
+        final controller = CameraController(
+          _cameras.first,
+          ResolutionPreset.medium,
+          enableAudio: false,
+        );
+        _cameraController = controller;
+        await controller.initialize();
+        if (mounted) {
+          setState(() {
+            _isCameraInitializing = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isCameraInitializing = false;
+            _infoMessage = 'No cameras found on this device. Using simulation.';
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCameraInitializing = false;
+          _infoMessage = 'Could not access camera: $e. Using simulation.';
+        });
+      }
+    }
+  }
+
+  Future<void> _disposeCamera() async {
+    if (_cameraController != null) {
+      await _cameraController!.dispose();
+      _cameraController = null;
+    }
+  }
+
+  Future<void> _captureLivePhoto() async {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      await _pickImageFromCamera();
+      return;
+    }
+    setState(() {
+      _isScanning = true;
+      _infoMessage = 'Capturing photo...';
+    });
+    try {
+      final XFile file = await _cameraController!.takePicture();
+      if (mounted) {
+        setState(() {
+          _pickedImage = file;
+          _isCameraMode = false;
+          _isCameraCaptured = true;
+          _selectedTemplate = OcrScanService.sampleTemplates[0];
+          _isScanned = false;
+          _isScanning = false;
+          _logs.clear();
+          _progress = 0.0;
+          _infoMessage = 'Camera snapshot captured successfully!';
+        });
+        await _disposeCamera();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+          _infoMessage = 'Error capturing photo: $e';
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
 
-    return LayoutBuilder(
-      builder: (context, screenConstraints) {
-        final isWide = screenConstraints.maxWidth > 750 && screenHeight > 600;
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: theme.colorScheme.surface,
+      elevation: 6,
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, screenConstraints) {
+          final isWide = screenConstraints.maxWidth > 750 && screenHeight > 600;
 
-        // 1. Left section: source selection, camera, preview
-        Widget leftSection(bool isExpanded) {
-          final child = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('1. Choose Handwriting Source:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _isCameraMode = true;
-                          _isCameraCaptured = false;
-                          _selectedTemplate = null;
-                          _isScanned = false;
-                          _isScanning = false;
-                          _logs.clear();
-                          _progress = 0.0;
-                          _pickedImage = null;
-                        });
-                      },
-                      icon: const Icon(Icons.camera_alt_outlined),
-                      label: const Text('Use Camera'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+          // 1. Left section: source selection, camera, preview
+          Widget leftSection(bool isExpanded) {
+            final child = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('1. Choose Handwriting Source:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _isCameraMode = true;
+                            _isCameraCaptured = false;
+                            _selectedTemplate = null;
+                            _isScanned = false;
+                            _isScanning = false;
+                            _logs.clear();
+                            _progress = 0.0;
+                            _pickedImage = null;
+                          });
+                          _initCamera();
+                        },
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        label: const Text('Use Camera'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _pickImageFromGallery,
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('Upload Photo'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<ScannedQuoteTemplate>(
+                  isExpanded: true,
+                  initialValue: _selectedTemplate,
+                  hint: const Text('Or select notebook estimate template...'),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickImageFromGallery,
-                      icon: const Icon(Icons.photo_library_outlined),
-                      label: const Text('Upload Photo'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
+                  items: OcrScanService.sampleTemplates.map((t) {
+                    return DropdownMenuItem(
+                      value: t,
+                      child: Text(t.title),
+                    );
+                  }).toList(),
+                  onChanged: (val) async {
+                    await _disposeCamera();
+                    setState(() {
+                      _selectedTemplate = val;
+                      _isCameraMode = false;
+                      _isCameraCaptured = false;
+                      _isScanned = false;
+                      _isScanning = false;
+                      _logs.clear();
+                      _progress = 0.0;
+                      _pickedImage = null;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 250, // Fix height of the preview sheet
+                  child: Stack(
+                    children: [
+                      _buildHandwritingSheet(theme),
+                      if (_isScanning)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: AnimatedBuilder(
+                            animation: _animController,
+                            builder: (context, child) {
+                              return Transform.translate(
+                                offset: Offset(0, 240 * _animController.value),
+                                child: Container(
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.green.withValues(alpha: 0.8),
+                                        blurRadius: 8,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+
+            return isExpanded
+                ? Expanded(
+                    flex: 11,
+                    child: SingleChildScrollView(
+                      child: child,
                     ),
+                  )
+                : child;
+          }
+
+          // 2. Right section: OCR logs, status, analysis
+          Widget rightSection(bool isExpanded) {
+            final child = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('2. AI Scanner Logs & Extraction:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: isExpanded ? 260 : 180, // Scrollable height for logs
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.brightness == Brightness.light ? Colors.grey.shade900 : const Color(0xFF020617),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: _logs.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Awaiting quotation scan...',
+                              style: TextStyle(color: Colors.green, fontFamily: 'monospace', fontSize: 12),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _logs.length,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6.0),
+                                child: Text(
+                                  _logs[index],
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontFamily: 'monospace',
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ),
+                if (_isScanning) ...[
+                  const SizedBox(height: 12),
+                  LinearProgressIndicator(value: _progress, color: Colors.green, backgroundColor: Colors.grey.shade300),
+                ],
+                if (_isScanned) ...[
+                  const SizedBox(height: 12),
+                  _buildScanResultsSummary(theme),
+                ],
+              ],
+            );
+
+            return isExpanded
+                ? Expanded(
+                    flex: 12,
+                    child: SingleChildScrollView(
+                      child: child,
+                    ),
+                  )
+                : child;
+          }
+
+          // 3. Assemble dialog body
+          Widget mainLayout;
+          if (isWide) {
+            mainLayout = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                leftSection(true),
+                const SizedBox(width: 20),
+                rightSection(true),
+              ],
+            );
+          } else {
+            mainLayout = SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  leftSection(false),
+                  const SizedBox(height: 24),
+                  rightSection(false),
+                ],
+              ),
+            );
+          }
+
+          final double maxDialogHeight = isWide
+              ? (screenHeight - 140).clamp(300.0, 560.0)
+              : (screenHeight - 160).clamp(250.0, 520.0);
+
+          return ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: isWide ? 850 : 450,
+              maxHeight: maxDialogHeight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.document_scanner, color: Colors.indigo, size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Scan Handwritten Quotation',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoBanner(theme),
+                  Expanded(
+                    child: mainLayout,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      if (_selectedTemplate != null && !_isScanning && !_isScanned)
+                        ElevatedButton.icon(
+                          onPressed: _triggerScan,
+                          icon: const Icon(Icons.document_scanner),
+                          label: const Text('Initiate OCR Scan'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.indigo,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      if (_isScanned)
+                        ElevatedButton.icon(
+                          onPressed: _convertToInvoice,
+                          icon: const Icon(Icons.forward_to_inbox),
+                          label: const Text('Import to Invoice Wizard'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<ScannedQuoteTemplate>(
-                isExpanded: true,
-                initialValue: _selectedTemplate,
-                hint: const Text('Or select notebook estimate template...'),
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                items: OcrScanService.sampleTemplates.map((t) {
-                  return DropdownMenuItem(
-                    value: t,
-                    child: Text(t.title),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  setState(() {
-                    _selectedTemplate = val;
-                    _isCameraMode = false;
-                    _isCameraCaptured = false;
-                    _isScanned = false;
-                    _isScanning = false;
-                    _logs.clear();
-                    _progress = 0.0;
-                    _pickedImage = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 250, // Fix height of the preview sheet
-                child: Stack(
-                  children: [
-                    _buildHandwritingSheet(theme),
-                    if (_isScanning)
-                      AnimatedBuilder(
-                        animation: _animController,
-                        builder: (context, child) {
-                          return Positioned(
-                            top: 240 * _animController.value,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: Colors.green,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.green.withValues(alpha: 0.8),
-                                    blurRadius: 8,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          );
-
-          return isExpanded
-              ? Expanded(
-                  flex: 11,
-                  child: SingleChildScrollView(
-                    child: child,
-                  ),
-                )
-              : child;
-        }
-
-        // 2. Right section: OCR logs, status, analysis
-        Widget rightSection(bool isExpanded) {
-          final child = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('2. AI Scanner Logs & Extraction:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: isExpanded ? 260 : 180, // Scrollable height for logs
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.brightness == Brightness.light ? Colors.grey.shade900 : const Color(0xFF020617),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: _logs.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Awaiting quotation scan...',
-                            style: TextStyle(color: Colors.green, fontFamily: 'monospace', fontSize: 12),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _logs.length,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6.0),
-                              child: Text(
-                                _logs[index],
-                                style: const TextStyle(
-                                  color: Colors.green,
-                                  fontFamily: 'monospace',
-                                  fontSize: 11,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ),
-              if (_isScanning) ...[
-                const SizedBox(height: 12),
-                LinearProgressIndicator(value: _progress, color: Colors.green, backgroundColor: Colors.grey.shade300),
-              ],
-              if (_isScanned) ...[
-                const SizedBox(height: 12),
-                _buildScanResultsSummary(theme),
-              ],
-            ],
-          );
-
-          return isExpanded
-              ? Expanded(
-                  flex: 12,
-                  child: SingleChildScrollView(
-                    child: child,
-                  ),
-                )
-              : child;
-        }
-
-        // 3. Assemble dialog body
-        Widget mainLayout;
-        if (isWide) {
-          mainLayout = Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              leftSection(true),
-              const SizedBox(width: 20),
-              rightSection(true),
-            ],
-          );
-        } else {
-          mainLayout = SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                leftSection(false),
-                const SizedBox(height: 24),
-                rightSection(false),
-              ],
             ),
           );
-        }
-
-        final double maxDialogHeight = isWide
-            ? (screenHeight - 140).clamp(300.0, 560.0)
-            : (screenHeight - 160).clamp(250.0, 520.0);
-
-        final Widget dialogBody = ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: isWide ? 850 : 450,
-            maxHeight: maxDialogHeight,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildInfoBanner(theme),
-              Expanded(
-                child: mainLayout,
-              ),
-            ],
-          ),
-        );
-
-        return AlertDialog(
-          title: Row(
-            children: [
-              const Icon(Icons.document_scanner, color: Colors.indigo, size: 28),
-              const SizedBox(width: 12),
-              Expanded(
-                child: const Text('Scan Handwritten Quotation'),
-              ),
-            ],
-          ),
-          content: dialogBody,
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            if (_selectedTemplate != null && !_isScanning && !_isScanned)
-              ElevatedButton.icon(
-                onPressed: _triggerScan,
-                icon: const Icon(Icons.document_scanner),
-                label: const Text('Initiate OCR Scan'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-              ),
-            if (_isScanned)
-              ElevatedButton.icon(
-                onPressed: _convertToInvoice,
-                icon: const Icon(Icons.forward_to_inbox),
-                label: const Text('Import to Invoice Wizard'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-              ),
-          ],
-        );
-      },
+        },
+      ),
     );
   }
 
@@ -515,42 +636,64 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // 1. Ruled paper document in background representing the camera feed
-            Opacity(
-              opacity: 0.6,
-              child: Container(
-                width: 160,
-                height: 160,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEFCE8), // Yellowish ruled paper
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Colors.amber.shade200),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
+            // 1. Live Camera Feed or Mock Viewfinder
+            if (_cameraController != null && _cameraController!.value.isInitialized)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: 200,
+                      height: 200 / _cameraController!.value.aspectRatio,
+                      child: CameraPreview(_cameraController!),
                     ),
-                  ],
+                  ),
                 ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'ESTIMATE QUOTE #902\nClient: EcoPower Solutions\n\n1. 10x Solar Panels\n2. 2x Inverters\n\nTotal: \$6,900.00\nTax: 15% (USD)',
-                      style: TextStyle(
-                        fontFamily: 'serif',
-                        fontSize: 9,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.black87,
-                        height: 1.3,
+              )
+            else if (_isCameraInitializing)
+              const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                ),
+              )
+            else
+              // Fallback Mock Viewfinder representing the camera feed
+              Opacity(
+                opacity: 0.6,
+                child: Container(
+                  width: 160,
+                  height: 160,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEFCE8), // Yellowish ruled paper
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.amber.shade200),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ESTIMATE QUOTE #902\nClient: EcoPower Solutions\n\n1. 10x Solar Panels\n2. 2x Inverters\n\nTotal: \$6,900.00\nTax: 15% (USD)',
+                        style: TextStyle(
+                          fontFamily: 'serif',
+                          fontSize: 9,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.black87,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             // 2. Alignment Target frame
             Container(
               width: 170,
@@ -576,9 +719,13 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
                     const _FlashingRedDot(),
                     const SizedBox(width: 6),
                     Text(
-                      'CAMERA ACTIVE',
+                      _cameraController != null && _cameraController!.value.isInitialized
+                          ? 'CAMERA LIVE'
+                          : 'CAMERA ACTIVE',
                       style: TextStyle(
-                        color: Colors.red.shade400,
+                        color: _cameraController != null && _cameraController!.value.isInitialized
+                            ? Colors.green.shade400
+                            : Colors.red.shade400,
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.0,
@@ -608,7 +755,7 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
             Positioned(
               bottom: 12,
               child: ElevatedButton.icon(
-                onPressed: _pickImageFromCamera,
+                onPressed: _captureLivePhoto,
                 icon: const Icon(Icons.camera, size: 18),
                 label: const Text('Capture Photo', style: TextStyle(fontSize: 12)),
                 style: ElevatedButton.styleFrom(

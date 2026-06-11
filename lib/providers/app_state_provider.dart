@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/user_model.dart';
@@ -261,5 +262,80 @@ class AppStateProvider extends ChangeNotifier {
       }
     }
     return monthlySales;
+  }
+
+  // Export all application data as a JSON string
+  String exportBackupData() {
+    final Map<String, dynamic> backup = {
+      'backupVersion': 1,
+      'backupTimestamp': DateTime.now().toIso8601String(),
+      'company': _company.toJson(),
+      'clients': _clients.map((c) => c.toJson()).toList(),
+      'products': _products.map((p) => p.toJson()).toList(),
+      'invoices': _invoices.map((inv) => inv.toJson()).toList(),
+      'users': _users.map((u) => u.toJson()).toList(),
+    };
+    return json.encode(backup);
+  }
+
+  // Restore application data from a JSON string
+  Future<bool> restoreBackupData(String jsonString) async {
+    try {
+      final Map<String, dynamic> backup = json.decode(jsonString) as Map<String, dynamic>;
+      
+      // Validate backup version or basic keys
+      if (!backup.containsKey('company') ||
+          !backup.containsKey('clients') ||
+          !backup.containsKey('products') ||
+          !backup.containsKey('invoices')) {
+        return false;
+      }
+
+      // Parse and load
+      final CompanyModel company = CompanyModel.fromJson(backup['company'] as Map<String, dynamic>);
+      
+      final List<ClientModel> clients = (backup['clients'] as List)
+          .map((e) => ClientModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+          
+      final List<ProductModel> products = (backup['products'] as List)
+          .map((e) => ProductModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+          
+      final List<InvoiceModel> invoices = (backup['invoices'] as List)
+          .map((e) => InvoiceModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      List<UserModel> users = [];
+      if (backup.containsKey('users')) {
+        users = (backup['users'] as List)
+            .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+
+      // Save to storage
+      await _storage.saveCompany(company);
+      await _storage.saveClients(clients);
+      await _storage.saveProducts(products);
+      await _storage.saveInvoices(invoices);
+      if (users.isNotEmpty) {
+        await _storage.saveUsers(users);
+      }
+
+      // Re-load into local State
+      _company = company;
+      _clients = clients;
+      _products = products;
+      _invoices = invoices;
+      if (users.isNotEmpty) {
+        _users = users;
+      }
+      
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Backup restoration error: $e');
+      return false;
+    }
   }
 }
