@@ -21,11 +21,22 @@ class _LoginScreenState extends State<LoginScreen> {
   final _otpController = TextEditingController();
   String? _otpErrorMessage;
 
+  final _registerFormKey = GlobalKey<FormState>();
+  final _registerNameController = TextEditingController();
+  final _registerEmailController = TextEditingController();
+  final _registerPasswordController = TextEditingController();
+  final _registerConfirmPasswordController = TextEditingController();
+  String? _registerErrorMessage;
+
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _otpController.dispose();
+    _registerNameController.dispose();
+    _registerEmailController.dispose();
+    _registerPasswordController.dispose();
+    _registerConfirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -386,9 +397,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
-                        child: isOtpVerification
-                            ? _buildOtpForm(state, theme)
-                            : _buildLoginForm(state, theme),
+                        child: state.users.isEmpty
+                            ? _buildRegisterAdminForm(state, theme)
+                            : isOtpVerification
+                                ? _buildOtpForm(state, theme)
+                                : _buildLoginForm(state, theme),
                       ),
                     ),
                   ),
@@ -691,5 +704,163 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildRegisterAdminForm(AppStateProvider state, ThemeData theme) {
+    return Form(
+      key: _registerFormKey,
+      child: Column(
+        key: const ValueKey('register_admin_form'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.admin_panel_settings_outlined,
+            size: 64,
+            color: Colors.indigo,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Create Admin Account',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+              color: theme.brightness == Brightness.light ? Colors.indigo.shade900 : Colors.indigo.shade200,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Set up initial admin credentials to start using Invoicey.',
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.hintColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+
+          if (_registerErrorMessage != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade400.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red.shade400, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _registerErrorMessage!,
+                      style: TextStyle(color: Colors.red.shade400, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          TextFormField(
+            controller: _registerNameController,
+            decoration: const InputDecoration(
+              labelText: 'Administrator Name',
+              prefixIcon: Icon(Icons.person_outline),
+              border: OutlineInputBorder(),
+            ),
+            validator: (v) => v == null || v.trim().isEmpty ? 'Administrator name is required' : null,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _registerEmailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Username or Email',
+              prefixIcon: Icon(Icons.email_outlined),
+              border: OutlineInputBorder(),
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Username/Email is required';
+              final val = v.trim().toLowerCase();
+              if (val != 'admin' && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) {
+                return 'Please enter a valid email or username';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _registerPasswordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Password',
+              prefixIcon: Icon(Icons.lock_outline),
+              border: OutlineInputBorder(),
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Password is required';
+              if (v.length < 4) return 'Password must be at least 4 characters';
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _registerConfirmPasswordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Confirm Password',
+              prefixIcon: Icon(Icons.lock_outline),
+              border: OutlineInputBorder(),
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Please confirm your password';
+              if (v != _registerPasswordController.text) return 'Passwords do not match';
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: state.isLoading ? null : () => _submitRegisterAdmin(state),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: state.isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      'Create & Login',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _submitRegisterAdmin(AppStateProvider state) async {
+    if (!_registerFormKey.currentState!.validate()) return;
+    setState(() {
+      _registerErrorMessage = null;
+    });
+
+    try {
+      await state.registerInitialAdmin(
+        _registerNameController.text,
+        _registerEmailController.text,
+        _registerPasswordController.text,
+      );
+    } catch (e) {
+      setState(() {
+        _registerErrorMessage = 'Failed to create admin: $e';
+      });
+    }
   }
 }

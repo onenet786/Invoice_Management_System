@@ -26,6 +26,7 @@ class AppStateProvider extends ChangeNotifier {
   List<ProductModel> _products = [];
   List<InvoiceModel> _invoices = [];
 
+  List<UserModel> get users => _users;
   List<ClientModel> get clients => _clients;
   List<ProductModel> get products => _products;
   List<InvoiceModel> get invoices => _invoices;
@@ -49,7 +50,7 @@ class AppStateProvider extends ChangeNotifier {
   String get googleDriveClientSecret => _googleDriveClientSecret;
 
   AppStateProvider(this._storage)
-      : _company = CompanyModel(name: 'My Solar & IT Corp', logo: '', taxId: '', address: '', currency: '\$') {
+      : _company = CompanyModel(name: 'My Solar & IT Corp', logo: '', taxId: '', address: '', currency: 'PKR') {
     _loadAllData();
   }
 
@@ -115,6 +116,30 @@ class AppStateProvider extends ChangeNotifier {
 
   void logout() {
     _currentUser = null;
+    notifyListeners();
+  }
+
+  Future<void> registerInitialAdmin(String name, String email, String password) async {
+    _isLoading = true;
+    notifyListeners();
+
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    final admin = UserModel(
+      id: 'u-${DateTime.now().millisecondsSinceEpoch}',
+      name: name.trim(),
+      email: email.trim(),
+      password: password,
+      role: UserRole.admin,
+    );
+
+    _users = [admin];
+    await _storage.saveUsers(_users);
+    
+    // Automatically log in the newly registered admin
+    _currentUser = admin;
+
+    _isLoading = false;
     notifyListeners();
   }
 

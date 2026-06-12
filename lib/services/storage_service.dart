@@ -5,7 +5,6 @@ import '../models/company_model.dart';
 import '../models/client_model.dart';
 import '../models/product_model.dart';
 import '../models/invoice_model.dart';
-import '../models/invoice_item_model.dart';
 
 class StorageService {
   static const String _keyUsers = 'invoice_users';
@@ -33,17 +32,8 @@ class StorageService {
   Future<void> _checkAndSeed() async {
     final firstRun = _prefs.getBool(_keyFirstRun) ?? true;
     if (firstRun) {
-      // Seed default users (Single Admin with user/pass: admin)
-      final users = [
-        UserModel(
-          id: 'u-1',
-          name: 'Super Admin',
-          email: 'admin',
-          password: 'admin',
-          role: UserRole.admin,
-        ),
-      ];
-      await saveUsers(users);
+      // Seed default users as empty, to be created on first launch
+      await saveUsers([]);
 
       // Seed default company
       final company = CompanyModel(
@@ -51,7 +41,7 @@ class StorageService {
         logo: '', // Base64 logo placeholder or blank
         taxId: 'TAX-2026-SOLARIT',
         address: '123 Renewable Energy Way, Suite 4B, Austin, TX 78701',
-        currency: '\$',
+        currency: 'PKR',
       );
       await saveCompany(company);
 
@@ -247,7 +237,7 @@ class StorageService {
         logo: '',
         taxId: 'TAX-2026-SOLARIT',
         address: '123 Renewable Energy Way, Suite 4B, Austin, TX 78701',
-        currency: '\$',
+        currency: 'PKR',
       );
     }
     return CompanyModel.fromJson(json.decode(str) as Map<String, dynamic>);

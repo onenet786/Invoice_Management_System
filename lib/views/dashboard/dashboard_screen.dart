@@ -157,7 +157,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Expanded(
                           flex: 3,
-                          child: _buildSalesLineChartCard(monthlySales, theme),
+                          child: _buildSalesLineChartCard(monthlySales, theme, currency),
                         ),
                         const SizedBox(width: 20),
                         Expanded(
@@ -169,7 +169,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   } else {
                     return Column(
                       children: [
-                        _buildSalesLineChartCard(monthlySales, theme),
+                        _buildSalesLineChartCard(monthlySales, theme, currency),
                         const SizedBox(height: 24),
                         _buildStatusPieChartCard(filteredInvoices, theme),
                       ],
@@ -334,7 +334,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSalesLineChartCard(Map<int, double> monthlySales, ThemeData theme) {
+  Widget _buildSalesLineChartCard(Map<int, double> monthlySales, ThemeData theme, String currency) {
     List<FlSpot> spots = [];
     for (int m = 1; m <= 12; m++) {
       spots.add(FlSpot(m.toDouble(), monthlySales[m] ?? 0.0));
@@ -410,12 +410,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           if (value >= 1000) {
                             return SideTitleWidget(
                               axisSide: meta.axisSide,
-                              child: Text('\$${(value / 1000).toStringAsFixed(1)}k', style: TextStyle(fontSize: 9, color: theme.hintColor)),
+                              child: Text('$currency${(value / 1000).toStringAsFixed(1)}k', style: TextStyle(fontSize: 9, color: theme.hintColor)),
                             );
                           }
                           return SideTitleWidget(
                             axisSide: meta.axisSide,
-                            child: Text('\$${value.toInt()}', style: TextStyle(fontSize: 9, color: theme.hintColor)),
+                            child: Text('$currency${value.toInt()}', style: TextStyle(fontSize: 9, color: theme.hintColor)),
                           );
                         },
                       ),

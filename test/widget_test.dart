@@ -25,13 +25,16 @@ void main() {
     // Re-render
     await tester.pumpAndSettle();
 
-    // Verify login elements exist
-    expect(find.text('INVOICEY'), findsOneWidget);
-    expect(find.text('Sign In'), findsOneWidget);
+    // Verify initial admin setup screen elements exist on first launch
+    expect(find.text('Create Admin Account'), findsOneWidget);
+    expect(find.text('Create & Login'), findsOneWidget);
   });
 
   testWidgets('Google sign in initiates OTP verification view', (WidgetTester tester) async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'flutter.invoice_first_run': false,
+      'flutter.invoice_users': '[{"id":"u-1","name":"Super Admin","email":"admin@invoice.com","password":"admin","role":"admin"}]',
+    });
     final storageService = await StorageService.init();
 
     await tester.pumpWidget(
