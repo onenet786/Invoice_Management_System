@@ -496,7 +496,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
+             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => _uploadBackupToGoogleDrive(state),
@@ -509,10 +509,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _confirmResetDatabase(state),
+                icon: const Icon(Icons.delete_forever_outlined, color: Colors.red, size: 18),
+                label: const Text('Reset System Database', style: TextStyle(color: Colors.red)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  void _confirmResetDatabase(AppStateProvider state) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text('Reset System Database?'),
+              ),
+            ],
+          ),
+          content: const Text(
+            'This action will permanently delete all custom invoices, clients, products, and configurations.\n\n'
+            'The database will be re-seeded to its original defaults: a single admin user (user/pass: admin) and default inventory items.\n\n'
+            'Do you want to proceed?',
+            style: TextStyle(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Reset Database'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await state.resetDatabase();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Database has been reset to system defaults.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      state.logout();
+    }
   }
 
   void _exportBackup(AppStateProvider state) async {

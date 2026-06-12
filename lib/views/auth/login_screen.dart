@@ -70,14 +70,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _quickFill(String email, String password) {
-    setState(() {
-      _emailController.text = email;
-      _passwordController.text = password;
-      _errorMessage = null;
-    });
-  }
-
   void _handleGoogleSignIn(AppStateProvider state) async {
     if (state.googleDriveSimulate) {
       final emailController = TextEditingController();
@@ -468,15 +460,16 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             decoration: const InputDecoration(
-              labelText: 'Email Address',
+              labelText: 'Email or Username',
               prefixIcon: Icon(Icons.email_outlined),
               border: OutlineInputBorder(),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Please enter your email';
+                return 'Please enter your email or username';
               }
-              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+              final val = value.trim().toLowerCase();
+              if (val != 'admin' && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                 return 'Please enter a valid email address';
               }
               return null;
@@ -561,25 +554,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
             ),
-          ),
-
-          const SizedBox(height: 32),
-          const Divider(),
-          const SizedBox(height: 16),
-
-          Text(
-            'Quick Seed Accounts (Tap to fill):',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.hintColor),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildQuickFillChip('Admin', 'admin@invoice.com', 'admin123', Colors.red.shade400),
-              _buildQuickFillChip('Manager', 'manager@invoice.com', 'manager123', Colors.amber.shade700),
-              _buildQuickFillChip('Viewer', 'viewer@invoice.com', 'viewer123', Colors.grey.shade600),
-            ],
           ),
         ],
       ),

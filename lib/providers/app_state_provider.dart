@@ -221,6 +221,18 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Database Management
+  Future<void> resetDatabase() async {
+    _isLoading = true;
+    notifyListeners();
+
+    await _storage.resetDatabase();
+    await _loadAllData();
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
   // Company management
   Future<void> updateCompany(CompanyModel updatedCompany) async {
     if (!isAdmin) return; // Only Admin can change company profile

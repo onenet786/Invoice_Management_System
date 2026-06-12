@@ -33,28 +33,14 @@ class StorageService {
   Future<void> _checkAndSeed() async {
     final firstRun = _prefs.getBool(_keyFirstRun) ?? true;
     if (firstRun) {
-      // Seed default users
+      // Seed default users (Single Admin with user/pass: admin)
       final users = [
         UserModel(
           id: 'u-1',
           name: 'Super Admin',
-          email: 'admin@invoice.com',
-          password: 'admin123',
+          email: 'admin',
+          password: 'admin',
           role: UserRole.admin,
-        ),
-        UserModel(
-          id: 'u-2',
-          name: 'Project Manager',
-          email: 'manager@invoice.com',
-          password: 'manager123',
-          role: UserRole.manager,
-        ),
-        UserModel(
-          id: 'u-3',
-          name: 'General Viewer',
-          email: 'viewer@invoice.com',
-          password: 'viewer123',
-          role: UserRole.viewer,
         ),
       ];
       await saveUsers(users);
@@ -232,86 +218,8 @@ class StorageService {
       ];
       await saveProducts(products);
 
-      // Seed 2 mock invoices so that dashboards look awesome on initial load
-      final mockInvoices = [
-        InvoiceModel(
-          id: 'inv-1',
-          invoiceNumber: 'INV-2026-0001',
-          clientId: 'c-1',
-          issueDate: DateTime.now().subtract(const Duration(days: 15)),
-          dueDate: DateTime.now().add(const Duration(days: 15)),
-          status: InvoiceStatus.paid,
-          notes: 'Initial deployment equipment invoice. Standard Solar setup.',
-          items: [
-            InvoiceItemModel(
-              id: 'item-1-1',
-              productId: 'p-sol-1',
-              productName: 'Tier-1 Monocrystalline Solar Panel (550W)',
-              quantity: 8,
-              unitPrice: 249.99,
-              taxRate: 15.0,
-            ),
-            InvoiceItemModel(
-              id: 'item-1-2',
-              productId: 'p-sol-2',
-              productName: 'Hybrid Solar Inverter (10kW, Three-Phase)',
-              quantity: 1,
-              unitPrice: 1350.00,
-              taxRate: 15.0,
-            ),
-            InvoiceItemModel(
-              id: 'item-1-3',
-              productId: 'p-sol-3',
-              productName: 'Lithium-ion LiFePO4 Battery Storage Bank (5.12kWh, 48V)',
-              quantity: 2,
-              unitPrice: 1999.00,
-              taxRate: 15.0,
-            ),
-          ],
-          subTotal: 7347.92,
-          taxTotal: 1102.19,
-          grandTotal: 8450.11,
-        ),
-        InvoiceModel(
-          id: 'inv-2',
-          invoiceNumber: 'INV-2026-0002',
-          clientId: 'c-2',
-          issueDate: DateTime.now().subtract(const Duration(days: 5)),
-          dueDate: DateTime.now().subtract(const Duration(days: 1)),
-          status: InvoiceStatus.overdue,
-          notes: 'Enterprise server hardware and networking upgrade.',
-          items: [
-            InvoiceItemModel(
-              id: 'item-2-1',
-              productId: 'p-it-1',
-              productName: 'Enterprise Rack Server (2U, 2x Intel Xeon, 128GB RAM, 2TB NVMe)',
-              quantity: 1,
-              unitPrice: 4799.00,
-              taxRate: 10.0,
-            ),
-            InvoiceItemModel(
-              id: 'item-2-2',
-              productId: 'p-it-2',
-              productName: 'Managed L3 Network Switch (48-Port Gigabit, PoE+)',
-              quantity: 2,
-              unitPrice: 899.99,
-              taxRate: 10.0,
-            ),
-            InvoiceItemModel(
-              id: 'item-2-3',
-              productId: 'p-it-3',
-              productName: 'Wi-Fi 6E Enterprise Access Point (Dual-Band)',
-              quantity: 3,
-              unitPrice: 289.00,
-              taxRate: 10.0,
-            ),
-          ],
-          subTotal: 7465.98,
-          taxTotal: 746.60,
-          grandTotal: 8212.58,
-        ),
-      ];
-      await saveInvoices(mockInvoices);
+      // Seed an empty list of invoices on first run
+      await saveInvoices([]);
 
       await _prefs.setBool(_keyFirstRun, false);
     }
@@ -386,6 +294,16 @@ class StorageService {
   Future<void> saveInvoices(List<InvoiceModel> invoices) async {
     final list = invoices.map((e) => e.toJson()).toList();
     await _prefs.setString(_keyInvoices, json.encode(list));
+  }
+
+  Future<void> resetDatabase() async {
+    await _prefs.remove(_keyUsers);
+    await _prefs.remove(_keyCompany);
+    await _prefs.remove(_keyClients);
+    await _prefs.remove(_keyProducts);
+    await _prefs.remove(_keyInvoices);
+    await _prefs.setBool(_keyFirstRun, true);
+    await _checkAndSeed();
   }
 
   // Google Drive Cloud Backup Config
