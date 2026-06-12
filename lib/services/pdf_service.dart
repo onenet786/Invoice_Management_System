@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../models/invoice_model.dart';
 import '../models/client_model.dart';
 import '../models/company_model.dart';
@@ -11,7 +12,17 @@ class PdfService {
     required ClientModel client,
     required CompanyModel company,
   }) async {
-    final pdf = pw.Document();
+    final baseFont = await PdfGoogleFonts.robotoRegular();
+    final boldFont = await PdfGoogleFonts.robotoBold();
+    final italicFont = await PdfGoogleFonts.robotoItalic();
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: baseFont,
+        bold: boldFont,
+        italic: italicFont,
+      ),
+    );
 
     final String issueStr = invoice.issueDate.toIso8601String().split('T')[0];
     final String dueStr = invoice.dueDate.toIso8601String().split('T')[0];

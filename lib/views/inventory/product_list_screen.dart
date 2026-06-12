@@ -253,10 +253,10 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
       // Choose grid layout columns based on width
       final crossCount = constraints.maxWidth > 1200 ? 3 : (constraints.maxWidth > 700 ? 2 : 1);
       final double aspect = constraints.maxWidth > 1200
-          ? 2.2
+          ? 1.95
           : (constraints.maxWidth > 700
-              ? 2.1
-              : (constraints.maxWidth > 400 ? 1.85 : 1.55));
+              ? 1.85
+              : (constraints.maxWidth > 400 ? 1.6 : 1.35));
 
       return GridView.builder(
         itemCount: products.length,
@@ -302,23 +302,26 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
                   const SizedBox(height: 10),
                   // Name and description
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          prod.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          prod.description.isNotEmpty ? prod.description : 'No description provided.',
-                          style: TextStyle(fontSize: 12, color: theme.hintColor),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            prod.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            prod.description.isNotEmpty ? prod.description : 'No description provided.',
+                            style: TextStyle(fontSize: 12, color: theme.hintColor),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const Divider(),

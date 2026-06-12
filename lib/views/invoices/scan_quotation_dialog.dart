@@ -510,8 +510,8 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
           }
 
           final double maxDialogHeight = isWide
-              ? (screenHeight - 140).clamp(300.0, 560.0)
-              : (screenHeight - 160).clamp(250.0, 520.0);
+              ? (screenHeight - 100).clamp(300.0, 600.0)
+              : (screenHeight - 80).clamp(320.0, 560.0);
 
           return ConstrainedBox(
             constraints: BoxConstraints(

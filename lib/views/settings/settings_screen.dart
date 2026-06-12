@@ -25,6 +25,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _taxIdController;
   late TextEditingController _addressController;
   late TextEditingController _logoController;
+  late TextEditingController _googleClientIdController;
+  late TextEditingController _googleClientSecretController;
   late String _selectedCurrency;
 
   @override
@@ -37,6 +39,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _taxIdController = TextEditingController(text: comp.taxId);
     _addressController = TextEditingController(text: comp.address);
     _logoController = TextEditingController(text: comp.logo);
+    _googleClientIdController = TextEditingController(text: state.googleDriveClientId);
+    _googleClientSecretController = TextEditingController(text: state.googleDriveClientSecret);
     _selectedCurrency = comp.currency;
   }
 
@@ -46,6 +50,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _taxIdController.dispose();
     _addressController.dispose();
     _logoController.dispose();
+    _googleClientIdController.dispose();
+    _googleClientSecretController.dispose();
     super.dispose();
   }
 
@@ -122,6 +128,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               _buildTestingSandboxCard(theme, state),
                               const SizedBox(height: 20),
                               _buildBackupRestoreCard(theme, state),
+                              const SizedBox(height: 20),
+                              _buildCloudIntegrationCard(theme, state),
                             ],
                           ),
                         ),
@@ -137,6 +145,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildTestingSandboxCard(theme, state),
                         const SizedBox(height: 20),
                         _buildBackupRestoreCard(theme, state),
+                        const SizedBox(height: 20),
+                        _buildCloudIntegrationCard(theme, state),
                       ],
                     );
                   }
@@ -659,8 +669,251 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Widget _buildCloudIntegrationCard(ThemeData theme, AppStateProvider state) {
+    final canEdit = state.isAdmin;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.cloud_queue_outlined, color: Colors.indigo, size: 24),
+                SizedBox(width: 8),
+                Text(
+                  'Google Cloud Integration',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Configure real Google Drive backup or run mock simulations for offline testing.',
+              style: TextStyle(color: theme.hintColor, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Simulation Mode (Sandbox)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              subtitle: const Text(
+                'Simulates success without checking Google credentials.',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: state.googleDriveSimulate,
+              activeThumbColor: Colors.indigo,
+              onChanged: canEdit ? (val) {
+                state.updateGoogleDriveSettings(
+                  simulate: val,
+                  clientId: _googleClientIdController.text.trim(),
+                  clientSecret: _googleClientSecretController.text.trim(),
+                );
+              } : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _googleClientIdController,
+              enabled: canEdit && !state.googleDriveSimulate,
+              decoration: InputDecoration(
+                labelText: 'Google OAuth Client ID',
+                prefixIcon: const Icon(Icons.key_outlined),
+                border: const OutlineInputBorder(),
+                helperText: state.googleDriveSimulate
+                    ? 'Disabled in Simulation Mode'
+                    : 'Required for real Google authentication',
+                helperStyle: TextStyle(
+                  color: state.googleDriveSimulate ? theme.hintColor : Colors.indigo,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _googleClientSecretController,
+              enabled: canEdit && !state.googleDriveSimulate,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Google OAuth Client Secret',
+                prefixIcon: const Icon(Icons.lock_outline),
+                border: const OutlineInputBorder(),
+                helperText: state.googleDriveSimulate
+                    ? 'Disabled in Simulation Mode'
+                    : 'Optional client secret key',
+              ),
+            ),
+            if (canEdit && !state.googleDriveSimulate) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  onPressed: () {
+                    state.updateGoogleDriveSettings(
+                      simulate: state.googleDriveSimulate,
+                      clientId: _googleClientIdController.text.trim(),
+                      clientSecret: _googleClientSecretController.text.trim(),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Cloud credentials updated successfully.'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Save Cloud Config'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   void _uploadBackupToGoogleDrive(AppStateProvider state) async {
     final messenger = ScaffoldMessenger.of(context);
+    String? selectedEmail;
+
+    if (state.googleDriveSimulate) {
+      final emailController = TextEditingController();
+      final formKey = GlobalKey<FormState>();
+      final googleEmails = [
+        'admin@invoice.com',
+        'manager@invoice.com',
+        'viewer@invoice.com',
+        'user.demo@gmail.com',
+      ];
+
+      selectedEmail = await showDialog<String>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: const [
+                Icon(Icons.account_circle_outlined, color: Colors.indigo, size: 28),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Simulated Google Account Select'),
+                ),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Choose a Google account to simulate your Google Drive backup:',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: googleEmails.map((email) {
+                        return ActionChip(
+                          label: Text(email, style: const TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            emailController.text = email;
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Google Account Email',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Email is required';
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) return 'Enter a valid email address';
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (formKey.currentState!.validate()) {
+                    Navigator.pop(context, emailController.text.trim());
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Proceed'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (selectedEmail == null) return;
+    } else {
+      // Real API mode confirmation
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: const [
+                Icon(Icons.cloud_upload_outlined, color: Colors.indigo, size: 28),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Google Drive Backup'),
+                ),
+              ],
+            ),
+            content: const Text(
+              'This will initiate Google OAuth in your default web browser to log in and authorize Google Drive access.\n\n'
+              'Do you want to proceed?',
+              style: TextStyle(fontSize: 13),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Login & Upload'),
+              ),
+            ],
+          );
+        },
+      ) ?? false;
+
+      if (!proceed) return;
+    }
+
     messenger.showSnackBar(
       const SnackBar(
         content: Row(
@@ -677,6 +930,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         duration: Duration(days: 1),
       ),
     );
+
+    // If simulation mode is active, run the simulated flow immediately
+    if (state.googleDriveSimulate) {
+      await Future.delayed(const Duration(milliseconds: 1500));
+      
+      messenger.hideCurrentSnackBar();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Backup uploaded to Google Drive successfully for $selectedEmail (Simulated)! ID: mock-drive-${DateTime.now().millisecondsSinceEpoch}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
 
     try {
       // Initialize the singleton instance (must be done before authenticate)
@@ -722,13 +991,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     } catch (e) {
       messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Upload failed. Ensure Google OAuth credentials are configured for this app. Error: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 6),
-        ),
-      );
+      
+      if (!mounted) return;
+      final useSimulated = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: const [
+                Icon(Icons.cloud_off_outlined, color: Colors.amber, size: 28),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Google Drive Setup Missing'),
+                ),
+              ],
+            ),
+            content: Text(
+              'No Google OAuth credentials are configured for this app.\n'
+              'Error details: $e\n\n'
+              'Would you like to switch to Simulation Mode to simulate a successful Google Drive backup upload for testing?',
+              style: const TextStyle(fontSize: 13),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Switch to Simulation'),
+              ),
+            ],
+          );
+        },
+      ) ?? false;
+
+      if (useSimulated) {
+        await state.updateGoogleDriveSettings(
+          simulate: true,
+          clientId: state.googleDriveClientId,
+          clientSecret: state.googleDriveClientSecret,
+        );
+
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                ),
+                SizedBox(width: 16),
+                Text('Simulating Google Drive Upload...'),
+              ],
+            ),
+            duration: Duration(seconds: 1),
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 1500));
+        
+        if (!mounted) return;
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Backup uploaded to Google Drive successfully (Simulated)! ID: mock-drive-${DateTime.now().millisecondsSinceEpoch}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Upload failed. Ensure Google OAuth credentials are configured for this app. Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
     }
   }
 }

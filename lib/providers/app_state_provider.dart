@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/user_model.dart';
@@ -32,6 +33,21 @@ class AppStateProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   ThemeMode get themeMode => _themeMode;
 
+  String? _currentOtp;
+  String? get currentOtp => _currentOtp;
+
+  UserModel? _pendingOtpUser;
+  UserModel? get pendingOtpUser => _pendingOtpUser;
+
+  bool _googleDriveSimulate = true;
+  bool get googleDriveSimulate => _googleDriveSimulate;
+
+  String _googleDriveClientId = '';
+  String get googleDriveClientId => _googleDriveClientId;
+
+  String _googleDriveClientSecret = '';
+  String get googleDriveClientSecret => _googleDriveClientSecret;
+
   AppStateProvider(this._storage)
       : _company = CompanyModel(name: 'My Solar & IT Corp', logo: '', taxId: '', address: '', currency: '\$') {
     _loadAllData();
@@ -46,6 +62,9 @@ class AppStateProvider extends ChangeNotifier {
     _clients = await _storage.getClients();
     _products = await _storage.getProducts();
     _invoices = await _storage.getInvoices();
+    _googleDriveSimulate = _storage.getGoogleDriveSimulate();
+    _googleDriveClientId = _storage.getGoogleDriveClientId();
+    _googleDriveClientSecret = _storage.getGoogleDriveClientSecret();
 
     // Check overdue invoices dynamically on load
     await _checkOverdueInvoices();
@@ -99,6 +118,63 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> initiateGoogleSignIn(String email) async {
+    _isLoading = true;
+    notifyListeners();
+
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    // Search for existing user in database
+    UserModel? match = _users.firstWhere(
+      (u) => u.email.toLowerCase().trim() == email.toLowerCase().trim(),
+      orElse: () => UserModel(id: '', name: '', email: '', password: '', role: UserRole.viewer),
+    );
+
+    // If user does not exist, auto-register them
+    if (match.id.isEmpty) {
+      final namePrefix = email.split('@')[0];
+      final capitalizedName = namePrefix.isNotEmpty
+          ? namePrefix[0].toUpperCase() + namePrefix.substring(1)
+          : 'Google User';
+
+      match = UserModel(
+        id: 'u-google-${DateTime.now().millisecondsSinceEpoch}',
+        name: capitalizedName,
+        email: email,
+        password: '', // Google users don't need a local password
+        role: UserRole.viewer, // Default new user to Viewer role
+      );
+      _users.add(match);
+      await _storage.saveUsers(_users);
+    }
+
+    // Generate random 6-digit OTP
+    final random = Random();
+    final otpVal = 100000 + random.nextInt(900000);
+    _currentOtp = otpVal.toString();
+    _pendingOtpUser = match;
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  bool verifyOtp(String enteredCode) {
+    if (_currentOtp != null && enteredCode.trim() == _currentOtp) {
+      _currentUser = _pendingOtpUser;
+      _currentOtp = null;
+      _pendingOtpUser = null;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  void cancelOtpSession() {
+    _currentOtp = null;
+    _pendingOtpUser = null;
+    notifyListeners();
+  }
+
   // Role verification helper
   bool get canWrite {
     if (_currentUser == null) return false;
@@ -127,6 +203,21 @@ class AppStateProvider extends ChangeNotifier {
   // Theme Management
   void toggleTheme() {
     _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    notifyListeners();
+  }
+
+  // Google Drive Config Settings
+  Future<void> updateGoogleDriveSettings({
+    required bool simulate,
+    required String clientId,
+    required String clientSecret,
+  }) async {
+    _googleDriveSimulate = simulate;
+    _googleDriveClientId = clientId;
+    _googleDriveClientSecret = clientSecret;
+    await _storage.saveGoogleDriveSimulate(simulate);
+    await _storage.saveGoogleDriveClientId(clientId);
+    await _storage.saveGoogleDriveClientSecret(clientSecret);
     notifyListeners();
   }
 

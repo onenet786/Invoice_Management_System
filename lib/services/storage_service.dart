@@ -14,6 +14,9 @@ class StorageService {
   static const String _keyProducts = 'invoice_products';
   static const String _keyInvoices = 'invoice_invoices';
   static const String _keyFirstRun = 'invoice_first_run';
+  static const String _keyGoogleDriveSimulate = 'google_drive_simulate';
+  static const String _keyGoogleDriveClientId = 'google_drive_client_id';
+  static const String _keyGoogleDriveClientSecret = 'google_drive_client_secret';
 
   final SharedPreferences _prefs;
 
@@ -383,5 +386,30 @@ class StorageService {
   Future<void> saveInvoices(List<InvoiceModel> invoices) async {
     final list = invoices.map((e) => e.toJson()).toList();
     await _prefs.setString(_keyInvoices, json.encode(list));
+  }
+
+  // Google Drive Cloud Backup Config
+  bool getGoogleDriveSimulate() {
+    return _prefs.getBool(_keyGoogleDriveSimulate) ?? true;
+  }
+
+  Future<void> saveGoogleDriveSimulate(bool value) async {
+    await _prefs.setBool(_keyGoogleDriveSimulate, value);
+  }
+
+  String getGoogleDriveClientId() {
+    return _prefs.getString(_keyGoogleDriveClientId) ?? '';
+  }
+
+  Future<void> saveGoogleDriveClientId(String value) async {
+    await _prefs.setString(_keyGoogleDriveClientId, value);
+  }
+
+  String getGoogleDriveClientSecret() {
+    return _prefs.getString(_keyGoogleDriveClientSecret) ?? '';
+  }
+
+  Future<void> saveGoogleDriveClientSecret(String value) async {
+    await _prefs.setString(_keyGoogleDriveClientSecret, value);
   }
 }
