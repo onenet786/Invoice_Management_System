@@ -692,15 +692,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-  Widget _buildQuickFillChip(String label, String email, String password, Color color) {
-    return ActionChip(
-      label: Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-      ),
-      backgroundColor: color,
-      onPressed: () => _quickFill(email, password),
-    );
-  }
 }
