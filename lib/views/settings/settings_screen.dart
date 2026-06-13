@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -11,6 +12,7 @@ import 'package:http/http.dart' as http;
 import '../../providers/app_state_provider.dart';
 import '../../models/company_model.dart';
 import '../../models/user_model.dart';
+import '../../utils/date_format_util.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -27,7 +29,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _logoController;
   late TextEditingController _googleClientIdController;
   late TextEditingController _googleClientSecretController;
+  late TextEditingController _n8nWebhookUrlController;
+  late TextEditingController _n8nApiKeyController;
   late String _selectedCurrency;
+
+  // Change Password controllers and obscure states
+  final _changePasswordFormKey = GlobalKey<FormState>();
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmNewPasswordController = TextEditingController();
+  bool _obscureCurrentPassword = true;
+  bool _obscureNewPassword = true;
+  bool _obscureConfirmNewPassword = true;
 
   @override
   void initState() {
@@ -41,6 +54,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _logoController = TextEditingController(text: comp.logo);
     _googleClientIdController = TextEditingController(text: state.googleDriveClientId);
     _googleClientSecretController = TextEditingController(text: state.googleDriveClientSecret);
+    _n8nWebhookUrlController = TextEditingController(text: state.n8nWebhookUrl);
+    _n8nApiKeyController = TextEditingController(text: state.n8nApiKey);
     _selectedCurrency = comp.currency;
   }
 
@@ -52,6 +67,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _logoController.dispose();
     _googleClientIdController.dispose();
     _googleClientSecretController.dispose();
+    _n8nWebhookUrlController.dispose();
+    _n8nApiKeyController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmNewPasswordController.dispose();
     super.dispose();
   }
 
@@ -125,11 +145,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             children: [
                               _buildPreferencesCard(theme, state),
                               const SizedBox(height: 20),
+                              _buildChangePasswordCard(theme, state),
+                              const SizedBox(height: 20),
                               _buildTestingSandboxCard(theme, state),
                               const SizedBox(height: 20),
                               _buildBackupRestoreCard(theme, state),
                               const SizedBox(height: 20),
                               _buildCloudIntegrationCard(theme, state),
+                              const SizedBox(height: 20),
+                              _buildWhatsAppIntegrationCard(theme, state),
                             ],
                           ),
                         ),
@@ -142,11 +166,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 20),
                         _buildPreferencesCard(theme, state),
                         const SizedBox(height: 20),
+                        _buildChangePasswordCard(theme, state),
+                        const SizedBox(height: 20),
                         _buildTestingSandboxCard(theme, state),
                         const SizedBox(height: 20),
                         _buildBackupRestoreCard(theme, state),
                         const SizedBox(height: 20),
                         _buildCloudIntegrationCard(theme, state),
+                        const SizedBox(height: 20),
+                        _buildWhatsAppIntegrationCard(theme, state),
                       ],
                     );
                   }
@@ -281,14 +309,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 validator: (v) => v == null || v.trim().isEmpty ? 'Office address is required' : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _logoController,
-                enabled: canEdit,
-                decoration: const InputDecoration(
-                  labelText: 'Company Logo Image URL or Base64 (Optional)',
-                  prefixIcon: Icon(Icons.image_outlined),
-                  border: OutlineInputBorder(),
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLogoPreview(_logoController.text),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _logoController,
+                          enabled: canEdit,
+                          onChanged: (_) {
+                            setState(() {});
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Company Logo Image URL or Base64 (Optional)',
+                            prefixIcon: Icon(Icons.image_outlined),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        if (canEdit) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _pickLogoFromGallery,
+                              icon: const Icon(Icons.photo_library_outlined, size: 18),
+                              label: const Text('Browse Gallery / File'),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.indigo),
+                                foregroundColor: Colors.indigo,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               if (canEdit)
@@ -341,6 +401,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onChanged: (_) => state.toggleTheme(),
                 activeThumbColor: Colors.indigo,
               ),
+            ),
+            const Divider(),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(
+                Icons.fingerprint_outlined,
+                color: Colors.indigo,
+              ),
+              title: const Text('Biometric / Thumb Login'),
+              subtitle: const Text(
+                'Unlock app using device biometrics (fingerprint/face recognition)',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: state.biometricEnabled,
+              activeThumbColor: Colors.indigo,
+              onChanged: (val) async {
+                if (val) {
+                  final isHardwareAvailable = await state.isBiometricHardwareAvailable();
+                  if (!isHardwareAvailable) {
+                    if (mounted) {
+                      final useSimulated = await showDialog<bool>(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: Row(
+                              children: const [
+                                Icon(Icons.fingerprint, color: Colors.indigo, size: 28),
+                                SizedBox(width: 10),
+                                Text('Biometrics Setup'),
+                              ],
+                            ),
+                            content: const Text(
+                              'Biometric authentication hardware (fingerprint/face recognition) was not detected on this device.\n\n'
+                              'Would you like to enable Simulated Biometric verification for testing purposes?',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.indigo,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const Text('Enable Simulation'),
+                              ),
+                            ],
+                          );
+                        },
+                      ) ?? false;
+                      
+                      if (useSimulated) {
+                        await state.updateBiometricEnabled(true);
+                      }
+                    }
+                    return;
+                  }
+                }
+                await state.updateBiometricEnabled(val);
+              },
             ),
           ],
         ),
@@ -587,19 +712,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final Uint8List bytes = utf8.encode(backupStr);
       
       String? outputPath;
-      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      String? initialDir;
+
+      try {
+        if (Platform.isAndroid) {
+          const String path = '/storage/emulated/0/Download';
+          final dir = Directory(path);
+          if (await dir.exists()) {
+            initialDir = path;
+          }
+        } else {
+          final directory = await getDownloadsDirectory();
+          if (directory != null) {
+            initialDir = directory.path;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error getting downloads directory: $e');
+      }
+
+      final String backupFileName = 'IMS-${DateFormatUtil.toBackupFileName(DateTime.now())}.json';
+
+      try {
         outputPath = await FilePicker.saveFile(
           dialogTitle: 'Select Backup Destination',
-          fileName: 'ims_backup_${DateTime.now().millisecondsSinceEpoch}.json',
+          fileName: backupFileName,
+          initialDirectory: initialDir,
           type: FileType.custom,
           allowedExtensions: ['json'],
           bytes: bytes,
         );
-      } else {
+      } catch (e) {
+        debugPrint('FilePicker.saveFile failed, falling back: $e');
         final directory = await getApplicationDocumentsDirectory();
-        outputPath = '${directory.path}/ims_backup_${DateTime.now().millisecondsSinceEpoch}.json';
+        outputPath = '${directory.path}/$backupFileName';
         final file = File(outputPath);
-        await file.writeAsString(backupStr);
+        await file.writeAsBytes(bytes);
       }
 
       if (outputPath == null) {
@@ -628,9 +776,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _restoreBackup(AppStateProvider state) async {
     try {
+      String? initialDir;
+      try {
+        if (Platform.isAndroid) {
+          const String path = '/storage/emulated/0/Download';
+          final dir = Directory(path);
+          if (await dir.exists()) {
+            initialDir = path;
+          }
+        } else {
+          final directory = await getDownloadsDirectory();
+          if (directory != null) {
+            initialDir = directory.path;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error getting downloads directory: $e');
+      }
+
       final FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
+        initialDirectory: initialDir,
       );
 
       if (result == null || result.files.single.path == null) {
@@ -842,6 +1009,111 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildWhatsAppIntegrationCard(ThemeData theme, AppStateProvider state) {
+    final canEdit = state.isAdmin;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.message_outlined, color: Colors.green, size: 24),
+                SizedBox(width: 8),
+                Text(
+                  'WhatsApp & n8n Integration',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Configure a self-hosted n8n webhook with EvolutionAPI to dispatch invoice summaries and PDF documents directly to client WhatsApp numbers.',
+              style: TextStyle(color: theme.hintColor, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Enable WhatsApp Dispatch', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              subtitle: const Text(
+                'Show WhatsApp send option on invoices.',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: state.n8nEnabled,
+              activeThumbColor: Colors.green,
+              onChanged: canEdit ? (val) {
+                state.updateN8nSettings(
+                  enabled: val,
+                  webhookUrl: _n8nWebhookUrlController.text.trim(),
+                  apiKey: _n8nApiKeyController.text.trim(),
+                );
+              } : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _n8nWebhookUrlController,
+              enabled: canEdit && state.n8nEnabled,
+              decoration: InputDecoration(
+                labelText: 'n8n Webhook URL',
+                prefixIcon: const Icon(Icons.link_outlined),
+                border: const OutlineInputBorder(),
+                helperText: !state.n8nEnabled
+                    ? 'Disabled'
+                    : 'Target POST webhook endpoint in n8n',
+                helperStyle: TextStyle(
+                  color: !state.n8nEnabled ? theme.hintColor : Colors.green,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _n8nApiKeyController,
+              enabled: canEdit && state.n8nEnabled,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'n8n API Key / Bearer Token',
+                prefixIcon: const Icon(Icons.lock_outline),
+                border: const OutlineInputBorder(),
+                helperText: 'Optional auth token sent in the headers',
+              ),
+            ),
+            if (canEdit && state.n8nEnabled) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  onPressed: () {
+                    state.updateN8nSettings(
+                      enabled: state.n8nEnabled,
+                      webhookUrl: _n8nWebhookUrlController.text.trim(),
+                      apiKey: _n8nApiKeyController.text.trim(),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('WhatsApp & n8n settings updated successfully.'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Save WhatsApp Config'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   void _uploadBackupToGoogleDrive(AppStateProvider state) async {
     final messenger = ScaffoldMessenger.of(context);
     String? selectedEmail;
@@ -1037,7 +1309,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final driveApi = drive.DriveApi(authenticateClient);
 
       final driveFile = drive.File();
-      driveFile.name = 'ims_backup_${DateTime.now().millisecondsSinceEpoch}.json';
+      driveFile.name = 'IMS-${DateFormatUtil.toBackupFileName(DateTime.now())}.json';
       driveFile.mimeType = 'application/json';
 
       final String backupStr = state.exportBackupData();
@@ -1142,6 +1414,301 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       }
+    }
+  }
+
+  Widget _buildChangePasswordCard(ThemeData theme, AppStateProvider state) {
+    final user = state.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    final hasCurrentPassword = user.password.isNotEmpty;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Form(
+          key: _changePasswordFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.lock_reset_outlined, color: Colors.indigo, size: 24),
+                  SizedBox(width: 8),
+                  Text(
+                    'Change Password',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                hasCurrentPassword 
+                    ? 'Update your account login password.' 
+                    : 'Set up a local login password for your Google authorized account.',
+                style: TextStyle(color: theme.hintColor, fontSize: 12),
+              ),
+              const SizedBox(height: 20),
+              if (hasCurrentPassword) ...[
+                TextFormField(
+                  controller: _currentPasswordController,
+                  obscureText: _obscureCurrentPassword,
+                  decoration: InputDecoration(
+                    labelText: 'Current Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureCurrentPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: theme.hintColor,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureCurrentPassword = !_obscureCurrentPassword;
+                        });
+                      },
+                    ),
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Current password is required';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+              TextFormField(
+                controller: _newPasswordController,
+                obscureText: _obscureNewPassword,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  prefixIcon: const Icon(Icons.lock_open_outlined),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureNewPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: theme.hintColor,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureNewPassword = !_obscureNewPassword;
+                      });
+                    },
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'New password is required';
+                  if (v.length < 4) return 'Password must be at least 4 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _confirmNewPasswordController,
+                obscureText: _obscureConfirmNewPassword,
+                decoration: InputDecoration(
+                  labelText: 'Confirm New Password',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmNewPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: theme.hintColor,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureConfirmNewPassword = !_obscureConfirmNewPassword;
+                      });
+                    },
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Please confirm your new password';
+                  if (v != _newPasswordController.text) return 'Passwords do not match';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _handleChangePassword(state),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Update Password'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleChangePassword(AppStateProvider state) async {
+    if (!_changePasswordFormKey.currentState!.validate()) return;
+    
+    final currentPassword = _currentPasswordController.text;
+    final newPassword = _newPasswordController.text;
+    
+    final success = await state.changePassword(currentPassword, newPassword);
+    
+    if (mounted) {
+      if (success) {
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        _confirmNewPasswordController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password updated successfully.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Current password is incorrect.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickLogoFromGallery() async {
+    try {
+      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        final result = await FilePicker.pickFiles(
+          type: FileType.image,
+        );
+        if (result != null && result.files.single.path != null) {
+          final file = File(result.files.single.path!);
+          final bytes = await file.readAsBytes();
+          final base64String = base64Encode(bytes);
+          final extension = result.files.single.extension?.toLowerCase() ?? 'png';
+          final mimeType = extension == 'png' ? 'image/png' : 'image/jpeg';
+          final dataUrl = 'data:$mimeType;base64,$base64String';
+          setState(() {
+            _logoController.text = dataUrl;
+          });
+        }
+      } else {
+        final ImagePicker picker = ImagePicker();
+        final XFile? image = await picker.pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 800,
+          maxHeight: 800,
+          imageQuality: 85,
+        );
+        if (image != null) {
+          final bytes = await image.readAsBytes();
+          final base64String = base64Encode(bytes);
+          final mimeType = image.name.endsWith('.png') ? 'image/png' : 'image/jpeg';
+          final dataUrl = 'data:$mimeType;base64,$base64String';
+          setState(() {
+            _logoController.text = dataUrl;
+          });
+        }
+      }
+    } catch (e) {
+      try {
+        final ImagePicker picker = ImagePicker();
+        final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+        if (image != null) {
+          final bytes = await image.readAsBytes();
+          final base64String = base64Encode(bytes);
+          setState(() {
+            _logoController.text = 'data:image/png;base64,$base64String';
+          });
+        }
+      } catch (innerError) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to pick logo image: $innerError'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Widget _buildLogoPreview(String logoData) {
+    if (logoData.isEmpty) {
+      return Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Icon(Icons.business, size: 40, color: Colors.grey),
+      );
+    }
+    
+    try {
+      if (logoData.startsWith('http://') || logoData.startsWith('https://')) {
+        return Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              logoData,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.broken_image, color: Colors.red, size: 40);
+              },
+            ),
+          ),
+        );
+      } else {
+        String cleanBase64 = logoData;
+        if (logoData.contains('base64,')) {
+          cleanBase64 = logoData.split('base64,').last;
+        }
+        final bytes = base64Decode(cleanBase64.trim());
+        return Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.broken_image, color: Colors.red, size: 40);
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      return Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.red.shade300),
+        ),
+        child: const Icon(Icons.broken_image, size: 40, color: Colors.red),
+      );
     }
   }
 }

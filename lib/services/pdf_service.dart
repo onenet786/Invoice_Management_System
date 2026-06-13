@@ -1,10 +1,13 @@
-import 'dart:typed_data';
+import 'dart:convert';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../models/invoice_model.dart';
 import '../models/client_model.dart';
 import '../models/company_model.dart';
+import '../utils/date_format_util.dart';
 
 class PdfService {
   static Future<Uint8List> generateInvoicePdf({
@@ -24,8 +27,30 @@ class PdfService {
       ),
     );
 
-    final String issueStr = invoice.issueDate.toIso8601String().split('T')[0];
-    final String dueStr = invoice.dueDate.toIso8601String().split('T')[0];
+    final String issueStr = DateFormatUtil.toIsoDate(invoice.issueDate);
+    final String dueStr = DateFormatUtil.toIsoDate(invoice.dueDate);
+
+    pw.MemoryImage? logoImage;
+    if (company.logo.isNotEmpty) {
+      try {
+        if (company.logo.startsWith('http://') || company.logo.startsWith('https://')) {
+          final response = await http.get(Uri.parse(company.logo)).timeout(const Duration(seconds: 5));
+          if (response.statusCode == 200) {
+            logoImage = pw.MemoryImage(response.bodyBytes);
+          }
+        } else {
+          String cleanBase64 = company.logo;
+          if (company.logo.contains('base64,')) {
+            cleanBase64 = company.logo.split('base64,').last;
+          }
+          final bytes = base64Decode(cleanBase64.trim());
+          logoImage = pw.MemoryImage(bytes);
+        }
+      } catch (e) {
+        // Ignore/log error during PDF generation to prevent document rendering failure
+        debugPrint('Error loading logo in PDF generation: $e');
+      }
+    }
 
     pdf.addPage(
       pw.Page(
@@ -41,17 +66,30 @@ class PdfService {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Column(
+                    pw.Row(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text(
-                          company.name,
-                          style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800),
+                        if (logoImage != null) ...[
+                          pw.Container(
+                            width: 60,
+                            height: 60,
+                            margin: const pw.EdgeInsets.only(right: 12),
+                            child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                          ),
+                        ],
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              company.name,
+                              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800),
+                            ),
+                            pw.SizedBox(height: 4),
+                            pw.Text(company.address, style: const pw.TextStyle(fontSize: 9)),
+                            pw.SizedBox(height: 2),
+                            pw.Text("Tax ID: ${company.taxId}", style: const pw.TextStyle(fontSize: 9)),
+                          ],
                         ),
-                        pw.SizedBox(height: 4),
-                        pw.Text(company.address, style: const pw.TextStyle(fontSize: 10)),
-                        pw.SizedBox(height: 2),
-                        pw.Text("Tax ID: ${company.taxId}", style: const pw.TextStyle(fontSize: 10)),
                       ],
                     ),
                     pw.Column(
@@ -59,11 +97,11 @@ class PdfService {
                       children: [
                         pw.Text(
                           "INVOICE",
-                          style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900),
+                          style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900),
                         ),
                         pw.SizedBox(height: 4),
-                        pw.Text("Invoice Number: ${invoice.invoiceNumber}", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
-                        pw.Text("Status: ${invoice.status.name.toUpperCase()}", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: _getStatusColor(invoice.status), fontSize: 10)),
+                        pw.Text("Invoice Number: ${invoice.invoiceNumber}", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                        pw.Text("Status: ${invoice.status.name.toUpperCase()}", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: _getStatusColor(invoice.status), fontSize: 9)),
                       ],
                     ),
                   ],

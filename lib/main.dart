@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/storage_service.dart';
@@ -9,18 +10,33 @@ void main() async {
   // Ensure Flutter engine bindings are initialized prior to loading storage
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Global error handling: catch Flutter framework errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter Error: ${details.exceptionAsString()}');
+  };
+
   // Initialize storage persistence engine
   final storageService = await StorageService.init();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => AppStateProvider(storageService),
+  // Global error handling: catch async errors outside Flutter framework
+  runZonedGuarded(
+    () {
+      runApp(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => AppStateProvider(storageService),
+            ),
+          ],
+          child: const MyApp(),
         ),
-      ],
-      child: const MyApp(),
-    ),
+      );
+    },
+    (error, stackTrace) {
+      debugPrint('Unhandled error: $error');
+      debugPrint('Stack trace: $stackTrace');
+    },
   );
 }
 
@@ -29,7 +45,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = Provider.of<AppStateProvider>(context);
+    // Use select() to only rebuild when themeMode changes,
+    // not on every notifyListeners() call from the provider
+    final themeMode = context.select<AppStateProvider, ThemeMode>(
+      (state) => state.themeMode,
+    );
 
     // Modern light theme configuration
     final ThemeData lightTheme = ThemeData(
@@ -122,7 +142,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
-      themeMode: state.themeMode,
+      themeMode: themeMode,
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),

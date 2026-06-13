@@ -2,6 +2,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/invoice_model.dart';
 import '../models/client_model.dart';
 import '../models/company_model.dart';
+import '../utils/date_format_util.dart';
 
 class EmailService {
   static Future<bool> sendInvoiceEmail({
@@ -9,8 +10,8 @@ class EmailService {
     required ClientModel client,
     required CompanyModel company,
   }) async {
-    final String issueStr = invoice.issueDate.toIso8601String().split('T')[0];
-    final String dueStr = invoice.dueDate.toIso8601String().split('T')[0];
+    final String issueStr = DateFormatUtil.toIsoDate(invoice.issueDate);
+    final String dueStr = DateFormatUtil.toIsoDate(invoice.dueDate);
 
     final subject = Uri.encodeComponent("Invoice ${invoice.invoiceNumber} from ${company.name}");
     

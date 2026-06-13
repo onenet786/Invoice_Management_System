@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/app_state_provider.dart';
 import '../../models/invoice_model.dart';
 import '../../models/client_model.dart';
+import '../../utils/date_format_util.dart';
 import 'invoice_detail_screen.dart';
 import 'invoice_wizard/invoice_wizard_screen.dart';
 import 'invoice_pdf_preview_screen.dart';
 import 'scan_quotation_dialog.dart';
 import '../../services/email_service.dart';
+import '../../services/whatsapp_service.dart';
 
 class InvoiceListScreen extends StatefulWidget {
   const InvoiceListScreen({super.key});
@@ -21,10 +24,12 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   InvoiceStatus? _statusFilter;
+  Timer? _searchDebounce;
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
@@ -124,6 +129,78 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
     }
   }
 
+  void _sendInvoiceWhatsApp(InvoiceModel invoice) async {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    final client = state.clients.firstWhere(
+      (c) => c.id == invoice.clientId,
+      orElse: () => ClientModel(id: '', name: 'Unknown', email: '', phone: '', billingAddress: '', shippingAddress: ''),
+    );
+
+    if (client.id.isEmpty || client.phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Selected client does not have a valid phone number configured.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (state.n8nWebhookUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: n8n Webhook URL is not configured in Settings.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Colors.green),
+      ),
+    );
+
+    final success = await WhatsAppService.sendInvoiceWhatsApp(
+      invoice: invoice,
+      client: client,
+      company: state.company,
+      webhookUrl: state.n8nWebhookUrl,
+      apiKey: state.n8nApiKey,
+    );
+
+    // Pop loading
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+
+    if (success && mounted) {
+      // Mark as sent if it was in draft mode
+      if (invoice.status == InvoiceStatus.draft) {
+        final updated = invoice.copyWith(status: InvoiceStatus.sent);
+        await state.updateInvoice(updated);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('WhatsApp message sent to n8n webhook successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to send WhatsApp message via webhook. Check configuration.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = Provider.of<AppStateProvider>(context);
@@ -131,12 +208,13 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
     final currency = state.company.currency;
     final formatter = NumberFormat.currency(symbol: currency, decimalDigits: 2);
 
+    // Use cached client lookup map for O(1) performance
+    final clientMap = state.clientMap;
+    final unknownClient = ClientModel(id: '', name: 'Unknown', email: '', phone: '', billingAddress: '', shippingAddress: '');
+
     final filteredInvoices = state.invoices.where((inv) {
       final q = _searchQuery.toLowerCase();
-      final client = state.clients.firstWhere(
-        (c) => c.id == inv.clientId,
-        orElse: () => ClientModel(id: '', name: 'Unknown', email: '', phone: '', billingAddress: '', shippingAddress: ''),
-      );
+      final client = clientMap[inv.clientId] ?? unknownClient;
 
       final matchesQuery = inv.invoiceNumber.toLowerCase().contains(q) ||
           client.name.toLowerCase().contains(q);
@@ -239,8 +317,11 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                       child: TextField(
                         controller: _searchController,
                         onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val;
+                          _searchDebounce?.cancel();
+                          _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+                            setState(() {
+                              _searchQuery = val;
+                            });
                           });
                         },
                         decoration: const InputDecoration(
@@ -292,10 +373,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                       itemCount: filteredInvoices.length,
                       itemBuilder: (context, index) {
                         final inv = filteredInvoices[index];
-                        final client = state.clients.firstWhere(
-                          (c) => c.id == inv.clientId,
-                          orElse: () => ClientModel(id: '', name: 'Unknown Client', email: '', phone: '', billingAddress: '', shippingAddress: ''),
-                        );
+                        final client = clientMap[inv.clientId] ?? ClientModel(id: '', name: 'Unknown Client', email: '', phone: '', billingAddress: '', shippingAddress: '');
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -372,7 +450,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            'Issued: ${inv.issueDate.toIso8601String().split("T")[0]}',
+                                            'Issued: ${DateFormatUtil.toIsoDate(inv.issueDate)}',
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: theme.hintColor,
@@ -380,7 +458,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            'Due: ${inv.dueDate.toIso8601String().split("T")[0]}',
+                                            'Due: ${DateFormatUtil.toIsoDate(inv.dueDate)}',
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: inv.status == InvoiceStatus.overdue
@@ -505,6 +583,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
   }
 
   Widget _buildInvoiceActionMenu(InvoiceModel invoice) {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
     return PopupMenuButton<String>(
       onSelected: (action) {
         if (action == 'view') {
@@ -521,6 +600,8 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
           );
         } else if (action == 'email') {
           _sendInvoiceEmail(invoice);
+        } else if (action == 'whatsapp') {
+          _sendInvoiceWhatsApp(invoice);
         } else if (action == 'edit') {
           _openInvoiceWizard(invoice);
         } else if (action == 'delete') {
@@ -531,6 +612,17 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
         const PopupMenuItem(value: 'view', child: Row(children: [Icon(Icons.visibility_outlined, size: 18), SizedBox(width: 8), Text('Open Details')])),
         const PopupMenuItem(value: 'pdf', child: Row(children: [Icon(Icons.picture_as_pdf_outlined, size: 18), SizedBox(width: 8), Text('Preview PDF')])),
         const PopupMenuItem(value: 'email', child: Row(children: [Icon(Icons.email_outlined, size: 18), SizedBox(width: 8), Text('Send Email')])),
+        if (state.n8nEnabled)
+          const PopupMenuItem(
+            value: 'whatsapp',
+            child: Row(
+              children: [
+                Icon(Icons.chat_bubble_outline, color: Colors.green, size: 18),
+                SizedBox(width: 8),
+                Text('Send WhatsApp', style: TextStyle(color: Colors.green)),
+              ],
+            ),
+          ),
         const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 8), Text('Edit Wizard')])),
         const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, color: Colors.red, size: 18), SizedBox(width: 8), Text('Delete Invoice', style: TextStyle(color: Colors.red))])),
       ],

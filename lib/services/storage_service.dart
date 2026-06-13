@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../models/user_model.dart';
 import '../models/company_model.dart';
@@ -16,6 +17,11 @@ class StorageService {
   static const String _keyGoogleDriveSimulate = 'google_drive_simulate';
   static const String _keyGoogleDriveClientId = 'google_drive_client_id';
   static const String _keyGoogleDriveClientSecret = 'google_drive_client_secret';
+  static const String _keyBiometricEnabled = 'biometric_enabled';
+  static const String _keyThemeMode = 'theme_mode';
+  static const String _keyN8nWebhookUrl = 'n8n_webhook_url';
+  static const String _keyN8nApiKey = 'n8n_api_key';
+  static const String _keyN8nEnabled = 'n8n_enabled';
 
   final SharedPreferences _prefs;
 
@@ -319,5 +325,50 @@ class StorageService {
 
   Future<void> saveGoogleDriveClientSecret(String value) async {
     await _prefs.setString(_keyGoogleDriveClientSecret, value);
+  }
+
+  // Biometrics Storage
+  bool getBiometricEnabled() {
+    return _prefs.getBool(_keyBiometricEnabled) ?? false;
+  }
+
+  Future<void> saveBiometricEnabled(bool value) async {
+    await _prefs.setBool(_keyBiometricEnabled, value);
+  }
+
+  // Theme Mode Persistence
+  ThemeMode getThemeMode() {
+    final value = _prefs.getString(_keyThemeMode);
+    if (value == 'dark') return ThemeMode.dark;
+    return ThemeMode.light;
+  }
+
+  Future<void> saveThemeMode(ThemeMode mode) async {
+    await _prefs.setString(_keyThemeMode, mode == ThemeMode.dark ? 'dark' : 'light');
+  }
+
+  // n8n WhatsApp Webhook Integration Settings
+  String getN8nWebhookUrl() {
+    return _prefs.getString(_keyN8nWebhookUrl) ?? '';
+  }
+
+  Future<void> saveN8nWebhookUrl(String value) async {
+    await _prefs.setString(_keyN8nWebhookUrl, value);
+  }
+
+  String getN8nApiKey() {
+    return _prefs.getString(_keyN8nApiKey) ?? '';
+  }
+
+  Future<void> saveN8nApiKey(String value) async {
+    await _prefs.setString(_keyN8nApiKey, value);
+  }
+
+  bool getN8nEnabled() {
+    return _prefs.getBool(_keyN8nEnabled) ?? false;
+  }
+
+  Future<void> saveN8nEnabled(bool value) async {
+    await _prefs.setBool(_keyN8nEnabled, value);
   }
 }

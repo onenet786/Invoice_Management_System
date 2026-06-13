@@ -15,7 +15,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String? _selectedClientId;
   InvoiceStatus? _selectedStatus;
-  int _selectedYear = 2026;
+  int _selectedYear = DateTime.now().year;
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +185,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFilterResetButton() {
-    if (_selectedClientId == null && _selectedStatus == null && _selectedYear == 2026) {
+    if (_selectedClientId == null && _selectedStatus == null && _selectedYear == DateTime.now().year) {
       return const SizedBox.shrink();
     }
     return TextButton.icon(
@@ -195,7 +195,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _selectedClientId = null;
           _selectedStatus = null;
-          _selectedYear = 2026;
+          _selectedYear = DateTime.now().year;
         });
       },
     );
@@ -254,15 +254,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 });
               },
             ),
-            // Year Dropdown
+            // Year Dropdown — dynamically built from invoice data
             DropdownButton<int>(
               value: _selectedYear,
               underline: const SizedBox(),
-              items: const [
-                DropdownMenuItem<int>(value: 2025, child: Text('Year 2025')),
-                DropdownMenuItem<int>(value: 2026, child: Text('Year 2026')),
-                DropdownMenuItem<int>(value: 2027, child: Text('Year 2027')),
-              ],
+              items: state.getAvailableYears().map((year) {
+                return DropdownMenuItem<int>(value: year, child: Text('Year $year'));
+              }).toList(),
               onChanged: (val) {
                 if (val != null) {
                   setState(() {

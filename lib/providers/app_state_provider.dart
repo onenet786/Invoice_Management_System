@@ -1,13 +1,15 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/user_model.dart';
 import '../models/company_model.dart';
 import '../models/client_model.dart';
 import '../models/product_model.dart';
 import '../models/invoice_model.dart';
 import '../services/storage_service.dart';
+import '../utils/password_util.dart';
+import '../utils/date_format_util.dart';
+import 'package:local_auth/local_auth.dart';
 
 class AppStateProvider extends ChangeNotifier {
   final StorageService _storage;
@@ -49,6 +51,22 @@ class AppStateProvider extends ChangeNotifier {
   String _googleDriveClientSecret = '';
   String get googleDriveClientSecret => _googleDriveClientSecret;
 
+  bool _biometricEnabled = false;
+  bool get biometricEnabled => _biometricEnabled;
+
+  String _n8nWebhookUrl = '';
+  String get n8nWebhookUrl => _n8nWebhookUrl;
+
+  String _n8nApiKey = '';
+  String get n8nApiKey => _n8nApiKey;
+
+  bool _n8nEnabled = false;
+  bool get n8nEnabled => _n8nEnabled;
+
+  // Cached client lookup map for O(1) client resolution
+  Map<String, ClientModel> _clientMap = {};
+  Map<String, ClientModel> get clientMap => _clientMap;
+
   AppStateProvider(this._storage)
       : _company = CompanyModel(name: 'My Solar & IT Corp', logo: '', taxId: '', address: '', currency: 'PKR') {
     _loadAllData();
@@ -66,12 +84,47 @@ class AppStateProvider extends ChangeNotifier {
     _googleDriveSimulate = _storage.getGoogleDriveSimulate();
     _googleDriveClientId = _storage.getGoogleDriveClientId();
     _googleDriveClientSecret = _storage.getGoogleDriveClientSecret();
+    _biometricEnabled = _storage.getBiometricEnabled();
+    _n8nWebhookUrl = _storage.getN8nWebhookUrl();
+    _n8nApiKey = _storage.getN8nApiKey();
+    _n8nEnabled = _storage.getN8nEnabled();
+
+    // Load persisted theme preference
+    _themeMode = _storage.getThemeMode();
+
+    // Rebuild client lookup map
+    _rebuildClientMap();
 
     // Check overdue invoices dynamically on load
     await _checkOverdueInvoices();
 
+    // Migrate any plaintext passwords to hashed format
+    await _migratePasswordsIfNeeded();
+
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Migrates legacy plaintext passwords to SHA-256 hashed format.
+  Future<void> _migratePasswordsIfNeeded() async {
+    bool migrated = false;
+    for (int i = 0; i < _users.length; i++) {
+      final user = _users[i];
+      if (user.password.isNotEmpty && !PasswordUtil.isHashed(user.password)) {
+        _users[i] = user.copyWith(
+          password: PasswordUtil.hashPassword(user.password),
+        );
+        migrated = true;
+      }
+    }
+    if (migrated) {
+      await _storage.saveUsers(_users);
+    }
+  }
+
+  /// Rebuilds the client ID → ClientModel lookup map.
+  void _rebuildClientMap() {
+    _clientMap = {for (var c in _clients) c.id: c};
   }
 
   Future<void> _checkOverdueInvoices() async {
@@ -99,13 +152,19 @@ class AppStateProvider extends ChangeNotifier {
     // Simulate database lookup network latency
     await Future.delayed(const Duration(milliseconds: 600));
 
-    final match = _users.firstWhere(
-      (u) => u.email.toLowerCase().trim() == email.toLowerCase().trim() && u.password == password,
-      orElse: () => UserModel(id: '', name: '', email: '', password: '', role: UserRole.viewer),
-    );
+    UserModel? match;
+    for (final u in _users) {
+      if (u.email.toLowerCase().trim() == email.toLowerCase().trim()) {
+        // Verify password using secure hash comparison
+        if (PasswordUtil.verifyPassword(password, u.password)) {
+          match = u;
+        }
+        break;
+      }
+    }
 
     _isLoading = false;
-    if (match.id.isNotEmpty) {
+    if (match != null) {
       _currentUser = match;
       notifyListeners();
       return true;
@@ -129,7 +188,7 @@ class AppStateProvider extends ChangeNotifier {
       id: 'u-${DateTime.now().millisecondsSinceEpoch}',
       name: name.trim(),
       email: email.trim(),
-      password: password,
+      password: PasswordUtil.hashPassword(password), // Store hashed password
       role: UserRole.admin,
     );
 
@@ -214,20 +273,100 @@ class AppStateProvider extends ChangeNotifier {
   // Set mock role (for sandbox testing in Settings)
   void setMockRole(UserRole role) {
     if (_currentUser != null) {
-      _currentUser = UserModel(
-        id: _currentUser!.id,
-        name: _currentUser!.name,
-        email: _currentUser!.email,
-        password: _currentUser!.password,
-        role: role,
-      );
+      _currentUser = _currentUser!.copyWith(role: role);
       notifyListeners();
     }
   }
 
-  // Theme Management
+  // Change password for active user
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    if (_currentUser == null) return false;
+
+    // Check current password if it is set (non-empty)
+    if (_currentUser!.password.isNotEmpty) {
+      if (!PasswordUtil.verifyPassword(currentPassword, _currentUser!.password)) {
+        return false;
+      }
+    }
+
+    final updatedUser = _currentUser!.copyWith(
+      password: PasswordUtil.hashPassword(newPassword),
+    );
+
+    // Update in user list
+    final index = _users.indexWhere((u) => u.id == _currentUser!.id);
+    if (index != -1) {
+      _users[index] = updatedUser;
+    } else {
+      _users.add(updatedUser);
+    }
+
+    _currentUser = updatedUser;
+    await _storage.saveUsers(_users);
+    notifyListeners();
+    return true;
+  }
+
+  // Biometrics Management
+  Future<void> updateBiometricEnabled(bool enabled) async {
+    _biometricEnabled = enabled;
+    await _storage.saveBiometricEnabled(enabled);
+    notifyListeners();
+  }
+
+  Future<bool> isBiometricHardwareAvailable() async {
+    final LocalAuthentication auth = LocalAuthentication();
+    try {
+      final bool canCheck = await auth.canCheckBiometrics;
+      final bool isSupported = await auth.isDeviceSupported();
+      return canCheck || isSupported;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool loginBiometricUser() {
+    if (_users.isNotEmpty) {
+      final adminUser = _users.firstWhere(
+        (u) => u.role == UserRole.admin,
+        orElse: () => _users.first,
+      );
+      _currentUser = adminUser;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> authenticateWithBiometrics() async {
+    final LocalAuthentication auth = LocalAuthentication();
+    try {
+      final bool canCheck = await auth.canCheckBiometrics;
+      final bool isSupported = await auth.isDeviceSupported();
+      if (!canCheck && !isSupported) return false;
+
+      final bool didAuthenticate = await auth.authenticate(
+        localizedReason: 'Please authenticate to log in to Invoicey',
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+
+      if (didAuthenticate) {
+        return loginBiometricUser();
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Biometric authentication error: $e');
+      return false;
+    }
+  }
+
+  // Theme Management (now persisted)
   void toggleTheme() {
     _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _storage.saveThemeMode(_themeMode);
     notifyListeners();
   }
 
@@ -270,6 +409,7 @@ class AppStateProvider extends ChangeNotifier {
   Future<void> addClient(ClientModel client) async {
     if (!canWrite) return;
     _clients.add(client);
+    _rebuildClientMap();
     await _storage.saveClients(_clients);
     notifyListeners();
   }
@@ -279,6 +419,7 @@ class AppStateProvider extends ChangeNotifier {
     final index = _clients.indexWhere((c) => c.id == updatedClient.id);
     if (index != -1) {
       _clients[index] = updatedClient;
+      _rebuildClientMap();
       await _storage.saveClients(_clients);
       notifyListeners();
     }
@@ -287,6 +428,7 @@ class AppStateProvider extends ChangeNotifier {
   Future<void> deleteClient(String id) async {
     if (!canWrite) return;
     _clients.removeWhere((c) => c.id == id);
+    _rebuildClientMap();
     await _storage.saveClients(_clients);
     notifyListeners();
   }
@@ -343,7 +485,7 @@ class AppStateProvider extends ChangeNotifier {
 
   // Sequential Invoice Number Generator
   String generateNextInvoiceNumber() {
-    final datePrefix = DateFormat('ddMMMyyyy-').format(DateTime.now());
+    final datePrefix = DateFormatUtil.toInvoicePrefix(DateTime.now());
     int maxSeq = 0;
 
     for (var inv in _invoices) {
@@ -392,6 +534,18 @@ class AppStateProvider extends ChangeNotifier {
     return monthlySales;
   }
 
+  /// Returns a sorted list of distinct years present in invoice data.
+  /// Always includes the current year.
+  List<int> getAvailableYears() {
+    final currentYear = DateTime.now().year;
+    final years = <int>{currentYear};
+    for (var inv in _invoices) {
+      years.add(inv.issueDate.year);
+    }
+    final sorted = years.toList()..sort();
+    return sorted;
+  }
+
   // Export all application data as a JSON string
   String exportBackupData() {
     final Map<String, dynamic> backup = {
@@ -402,6 +556,10 @@ class AppStateProvider extends ChangeNotifier {
       'products': _products.map((p) => p.toJson()).toList(),
       'invoices': _invoices.map((inv) => inv.toJson()).toList(),
       'users': _users.map((u) => u.toJson()).toList(),
+      'biometricEnabled': _biometricEnabled,
+      'googleDriveSimulate': _googleDriveSimulate,
+      'googleDriveClientId': _googleDriveClientId,
+      'googleDriveClientSecret': _googleDriveClientSecret,
     };
     return json.encode(backup);
   }
@@ -411,53 +569,78 @@ class AppStateProvider extends ChangeNotifier {
     try {
       final Map<String, dynamic> backup = json.decode(jsonString) as Map<String, dynamic>;
       
-      // Validate backup version or basic keys
-      if (!backup.containsKey('company') ||
-          !backup.containsKey('clients') ||
-          !backup.containsKey('products') ||
-          !backup.containsKey('invoices')) {
-        return false;
+      // Parse company (fallback to keeping current company if not in backup)
+      CompanyModel company = _company;
+      if (backup.containsKey('company')) {
+        company = CompanyModel.fromJson(backup['company'] as Map<String, dynamic>);
+      }
+      
+      // Parse clients (fallback to keeping current clients if not in backup)
+      List<ClientModel> clients = _clients;
+      if (backup.containsKey('clients')) {
+        clients = (backup['clients'] as List)
+            .map((e) => ClientModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+          
+      // Parse products (fallback to keeping current products if not in backup)
+      List<ProductModel> products = _products;
+      if (backup.containsKey('products')) {
+        products = (backup['products'] as List)
+            .map((e) => ProductModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+          
+      // Parse invoices (fallback to keeping current invoices if not in backup)
+      List<InvoiceModel> invoices = _invoices;
+      if (backup.containsKey('invoices')) {
+        invoices = (backup['invoices'] as List)
+            .map((e) => InvoiceModel.fromJson(e as Map<String, dynamic>))
+            .toList();
       }
 
-      // Parse and load
-      final CompanyModel company = CompanyModel.fromJson(backup['company'] as Map<String, dynamic>);
-      
-      final List<ClientModel> clients = (backup['clients'] as List)
-          .map((e) => ClientModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-          
-      final List<ProductModel> products = (backup['products'] as List)
-          .map((e) => ProductModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-          
-      final List<InvoiceModel> invoices = (backup['invoices'] as List)
-          .map((e) => InvoiceModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-
-      List<UserModel> users = [];
+      // Parse users (fallback to keeping current users if not in backup)
+      List<UserModel> users = _users;
       if (backup.containsKey('users')) {
         users = (backup['users'] as List)
             .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
             .toList();
       }
 
-      // Save to storage
+      // Parse biometric choice
+      if (backup.containsKey('biometricEnabled')) {
+        _biometricEnabled = backup['biometricEnabled'] as bool? ?? false;
+        await _storage.saveBiometricEnabled(_biometricEnabled);
+      }
+
+      // Parse google drive preferences
+      if (backup.containsKey('googleDriveSimulate')) {
+        _googleDriveSimulate = backup['googleDriveSimulate'] as bool? ?? true;
+        await _storage.saveGoogleDriveSimulate(_googleDriveSimulate);
+      }
+      if (backup.containsKey('googleDriveClientId')) {
+        _googleDriveClientId = backup['googleDriveClientId'] as String? ?? '';
+        await _storage.saveGoogleDriveClientId(_googleDriveClientId);
+      }
+      if (backup.containsKey('googleDriveClientSecret')) {
+        _googleDriveClientSecret = backup['googleDriveClientSecret'] as String? ?? '';
+        await _storage.saveGoogleDriveClientSecret(_googleDriveClientSecret);
+      }
+
+      // Save collections to storage
       await _storage.saveCompany(company);
       await _storage.saveClients(clients);
       await _storage.saveProducts(products);
       await _storage.saveInvoices(invoices);
-      if (users.isNotEmpty) {
-        await _storage.saveUsers(users);
-      }
+      await _storage.saveUsers(users);
 
       // Re-load into local State
       _company = company;
       _clients = clients;
       _products = products;
       _invoices = invoices;
-      if (users.isNotEmpty) {
-        _users = users;
-      }
+      _users = users;
+      _rebuildClientMap();
       
       notifyListeners();
       return true;
@@ -465,5 +648,21 @@ class AppStateProvider extends ChangeNotifier {
       debugPrint('Backup restoration error: $e');
       return false;
     }
+  }
+
+  Future<void> updateN8nSettings({
+    required bool enabled,
+    required String webhookUrl,
+    required String apiKey,
+  }) async {
+    _n8nEnabled = enabled;
+    _n8nWebhookUrl = webhookUrl.trim();
+    _n8nApiKey = apiKey.trim();
+
+    await _storage.saveN8nEnabled(_n8nEnabled);
+    await _storage.saveN8nWebhookUrl(_n8nWebhookUrl);
+    await _storage.saveN8nApiKey(_n8nApiKey);
+
+    notifyListeners();
   }
 }

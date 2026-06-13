@@ -7,6 +7,7 @@ import '../../models/client_model.dart';
 import 'invoice_wizard/invoice_wizard_screen.dart';
 import 'invoice_pdf_preview_screen.dart';
 import '../../services/email_service.dart';
+import '../../services/whatsapp_service.dart';
 
 class InvoiceDetailScreen extends StatefulWidget {
   final InvoiceModel invoice;
@@ -143,6 +144,72 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
   }
 
+  void _sendWhatsApp() async {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    final client = state.clients.firstWhere(
+      (c) => c.id == _currentInvoice.clientId,
+      orElse: () => ClientModel(id: '', name: 'Unknown', email: '', phone: '', billingAddress: '', shippingAddress: ''),
+    );
+
+    if (client.id.isEmpty || client.phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Client phone number is not configured.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    if (state.n8nWebhookUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('n8n Webhook URL is not configured in Settings.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Colors.green),
+      ),
+    );
+
+    final success = await WhatsAppService.sendInvoiceWhatsApp(
+      invoice: _currentInvoice,
+      client: client,
+      company: state.company,
+      webhookUrl: state.n8nWebhookUrl,
+      apiKey: state.n8nApiKey,
+    );
+
+    // Pop the loading indicator
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+
+    if (success) {
+      if (_currentInvoice.status == InvoiceStatus.draft) {
+        final updated = _currentInvoice.copyWith(status: InvoiceStatus.sent);
+        await state.updateInvoice(updated);
+        if (!mounted) return;
+        setState(() {
+          _currentInvoice = updated;
+        });
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('WhatsApp message sent to n8n webhook successfully!'), backgroundColor: Colors.green),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send WhatsApp message via webhook. Check configuration.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   void _showViewerRestriction() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -193,6 +260,12 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             onPressed: _sendEmail,
             tooltip: 'Send Email to Client',
           ),
+          if (state.n8nEnabled)
+            IconButton(
+              icon: const Icon(Icons.chat_bubble_outline, color: Colors.green),
+              onPressed: _sendWhatsApp,
+              tooltip: 'Send via WhatsApp',
+            ),
           if (state.canWrite)
             IconButton(
               icon: const Icon(Icons.edit_outlined),

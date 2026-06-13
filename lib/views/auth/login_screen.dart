@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state_provider.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import '../../models/user_model.dart';
+import '../../utils/password_util.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,22 +17,267 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   String? _errorMessage;
 
-  final _otpFormKey = GlobalKey<FormState>();
-  final _otpController = TextEditingController();
-  String? _otpErrorMessage;
-
   final _registerFormKey = GlobalKey<FormState>();
   final _registerNameController = TextEditingController();
   final _registerEmailController = TextEditingController();
   final _registerPasswordController = TextEditingController();
   final _registerConfirmPasswordController = TextEditingController();
   String? _registerErrorMessage;
+  bool _obscureLoginPassword = true;
+  bool _obscureRegisterPassword = true;
+  bool _obscureRegisterConfirmPassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _autoBiometricAuthenticate();
+    });
+  }
+
+  void _autoBiometricAuthenticate() async {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    if (state.biometricEnabled && state.users.isNotEmpty) {
+      final isHardwareAvailable = await state.isBiometricHardwareAvailable();
+      if (isHardwareAvailable) {
+        final success = await state.authenticateWithBiometrics();
+        if (success && mounted) {
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
+      } else {
+        _showSimulatedBiometricDialog(state);
+      }
+    }
+  }
+
+  void _showSimulatedBiometricDialog(AppStateProvider state) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        bool scanning = false;
+        bool success = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Simulated Thumb Scanner',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap the fingerprint icon below to simulate a biometric thumb scan.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  GestureDetector(
+                    onTap: () async {
+                      if (scanning || success) return;
+                      setDialogState(() {
+                        scanning = true;
+                      });
+                      
+                      await Future.delayed(const Duration(milliseconds: 1200));
+                      
+                      if (context.mounted) {
+                        setDialogState(() {
+                          scanning = false;
+                          success = true;
+                        });
+                        
+                        await Future.delayed(const Duration(milliseconds: 600));
+                        
+                        if (context.mounted) {
+                          Navigator.pop(context); // Close dialog
+                          final ok = state.loginBiometricUser();
+                          if (ok && context.mounted) {
+                            Navigator.of(context).pushReplacementNamed('/home');
+                          }
+                        }
+                      }
+                    },
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: success
+                            ? Colors.green.shade50
+                            : scanning
+                                ? Colors.indigo.shade50
+                                : Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: success
+                              ? Colors.green
+                              : scanning
+                                  ? Colors.indigo
+                                  : Colors.grey.shade300,
+                          width: 2.5,
+                        ),
+                      ),
+                      child: Center(
+                        child: success
+                            ? const Icon(Icons.check_circle_outline, color: Colors.green, size: 50)
+                            : scanning
+                                ? const CircularProgressIndicator(color: Colors.indigo)
+                                : const Icon(Icons.fingerprint, color: Colors.indigo, size: 50),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    success
+                        ? 'Authentication Successful!'
+                        : scanning
+                            ? 'Scanning thumb...'
+                            : 'Place Thumb to Scan',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: success
+                          ? Colors.green
+                          : scanning
+                              ? Colors.indigo
+                              : Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _handleBiometricLoginPress(AppStateProvider state) async {
+    if (state.biometricEnabled) {
+      _autoBiometricAuthenticate();
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) {
+          final passwordController = TextEditingController();
+          final formKey = GlobalKey<FormState>();
+          bool obscure = true;
+          String? dialogError;
+
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                title: Row(
+                  children: const [
+                    Icon(Icons.fingerprint, color: Colors.indigo, size: 28),
+                    SizedBox(width: 10),
+                    Text('Enable Biometrics'),
+                  ],
+                ),
+                content: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'To enable Biometric Login, please verify your password first:',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      if (dialogError != null) ...[
+                        Text(
+                          dialogError!,
+                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      TextFormField(
+                        controller: passwordController,
+                        obscureText: obscure,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              color: Theme.of(context).hintColor,
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                obscure = !obscure;
+                              });
+                            },
+                          ),
+                          border: const OutlineInputBorder(),
+                        ),
+                        validator: (v) => v == null || v.isEmpty ? 'Password is required' : null,
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (!formKey.currentState!.validate()) return;
+                      
+                      final primaryUser = state.users.firstWhere(
+                        (u) => u.role == UserRole.admin,
+                        orElse: () => state.users.first,
+                      );
+                      
+                      if (PasswordUtil.verifyPassword(passwordController.text, primaryUser.password)) {
+                        Navigator.pop(context);
+                        await state.updateBiometricEnabled(true);
+                        
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Biometric Login enabled successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          _autoBiometricAuthenticate();
+                        }
+                      } else {
+                        setDialogState(() {
+                          dialogError = 'Incorrect password. Please try again.';
+                        });
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Verify & Enable'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    }
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _otpController.dispose();
     _registerNameController.dispose();
     _registerEmailController.dispose();
     _registerPasswordController.dispose();
@@ -63,354 +308,49 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _submitOtp(AppStateProvider state) {
-    if (!_otpFormKey.currentState!.validate()) return;
-    setState(() {
-      _otpErrorMessage = null;
-    });
-
-    final success = state.verifyOtp(_otpController.text);
-    if (success) {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      }
-    } else {
-      setState(() {
-        _otpErrorMessage = 'Invalid verification code. Please try again.';
-      });
-    }
-  }
-
-  void _handleGoogleSignIn(AppStateProvider state) async {
-    if (state.googleDriveSimulate) {
-      final emailController = TextEditingController();
-      final formKey = GlobalKey<FormState>();
-
-      final googleEmails = [
-        'admin@invoice.com',
-        'manager@invoice.com',
-        'viewer@invoice.com',
-        'user.demo@gmail.com',
-      ];
-
-      await showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: const [
-                Icon(Icons.account_circle, color: Colors.indigo, size: 28),
-                SizedBox(width: 10),
-                Text('Google Sign In'),
-              ],
-            ),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Select a mock account or type a custom Google email for testing:',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: googleEmails.map((email) {
-                      return ActionChip(
-                        label: Text(email, style: const TextStyle(fontSize: 11)),
-                        onPressed: () {
-                          emailController.text = email;
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Google Account Email',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Email is required';
-                      }
-                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) {
-                        return 'Enter a valid email address';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (formKey.currentState!.validate()) {
-                    Navigator.pop(context);
-                    state.initiateGoogleSignIn(emailController.text.trim());
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigo,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Sign In'),
-              ),
-            ],
-          );
-        },
-      );
-    } else {
-      // Real Google Sign-in flow
-      try {
-        await GoogleSignIn.instance.initialize();
-        final account = await GoogleSignIn.instance.authenticate();
-        final email = account.email;
-        state.initiateGoogleSignIn(email);
-      } catch (e) {
-        if (!mounted) return;
-        final switchSimulated = await showDialog<bool>(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Row(
-                children: const [
-                  Icon(Icons.cloud_off_outlined, color: Colors.amber, size: 28),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text('Google OAuth Error'),
-                  ),
-                ],
-              ),
-              content: Text(
-                'Failed to perform real Google Authentication.\n'
-                'Error: $e\n\n'
-                'Ensure Google OAuth credentials are configured for this app, or switch to Simulation Mode for sandbox testing.',
-                style: const TextStyle(fontSize: 13),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: const Text('Switch to Simulation'),
-                ),
-              ],
-            );
-          },
-        ) ?? false;
-
-        if (switchSimulated) {
-          await state.updateGoogleDriveSettings(
-            simulate: true,
-            clientId: state.googleDriveClientId,
-            clientSecret: state.googleDriveClientSecret,
-          );
-          if (!mounted) return;
-          _handleGoogleSignIn(state);
-        }
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = Provider.of<AppStateProvider>(context);
     final theme = Theme.of(context);
-    final isOtpVerification = state.currentOtp != null;
-
-    // Build floating mock email preview at the top of the stack
-    Widget? emailNotification;
-    if (isOtpVerification && state.pendingOtpUser != null) {
-      emailNotification = Positioned(
-        top: 24,
-        left: 24,
-        right: 24,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: -150.0, end: 0.0),
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeOutBack,
-          builder: (context, value, child) {
-            return Transform.translate(
-              offset: Offset(0, value),
-              child: child,
-            );
-          },
-          child: Material(
-            elevation: 12,
-            borderRadius: BorderRadius.circular(12),
-            color: theme.brightness == Brightness.light ? Colors.grey.shade900 : const Color(0xFF0F172A),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.indigo.shade400, width: 1.5),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.mark_email_unread, color: Colors.amber.shade400, size: 32),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'SIMULATED INBOX (no-reply@invoicey.com)',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade600,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'SENT',
-                                style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Your Invoicey OTP Login Verification Code',
-                          style: TextStyle(
-                            color: Colors.amber.shade200,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        RichText(
-                          text: TextSpan(
-                            style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4),
-                            children: [
-                              const TextSpan(text: 'Hello, use the following code to authorize your login session: '),
-                              TextSpan(
-                                text: state.currentOtp,
-                                style: const TextStyle(
-                                  color: Colors.greenAccent,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'monospace',
-                                  fontSize: 14,
-                                  letterSpacing: 1.2,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                              const TextSpan(text: '. This code will expire in 2 minutes.'),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.copy, color: Colors.white70, size: 18),
-                    onPressed: () {
-                      if (state.currentOtp != null) {
-                        Clipboard.setData(ClipboardData(text: state.currentOtp!));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('OTP code copied to clipboard!'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                    },
-                    tooltip: 'Copy Code',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
 
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.indigo.shade900,
-                  Colors.purple.shade900,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Center(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Card(
-                    elevation: 12,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    color: theme.brightness == Brightness.light
-                        ? Colors.white.withValues(alpha: 0.92)
-                        : Colors.grey.shade900.withValues(alpha: 0.92),
-                    child: Container(
-                      width: 450,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: state.users.isEmpty
-                            ? _buildRegisterAdminForm(state, theme)
-                            : isOtpVerification
-                                ? _buildOtpForm(state, theme)
-                                : _buildLoginForm(state, theme),
-                      ),
-                    ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.indigo.shade900,
+              Colors.purple.shade900,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Card(
+                elevation: 12,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                color: theme.brightness == Brightness.light
+                    ? Colors.white.withValues(alpha: 0.92)
+                    : Colors.grey.shade900.withValues(alpha: 0.92),
+                child: Container(
+                  width: 450,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: state.users.isEmpty
+                        ? _buildRegisterAdminForm(state, theme)
+                        : _buildLoginForm(state, theme),
                   ),
                 ),
               ),
             ),
           ),
-          ?emailNotification,
-        ],
+        ),
       ),
     );
   }
@@ -491,11 +431,22 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 20),
           TextFormField(
             controller: _passwordController,
-            obscureText: true,
-            decoration: const InputDecoration(
+            obscureText: _obscureLoginPassword,
+            decoration: InputDecoration(
               labelText: 'Password',
-              prefixIcon: Icon(Icons.lock_outline),
-              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureLoginPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: theme.hintColor,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscureLoginPassword = !_obscureLoginPassword;
+                  });
+                },
+              ),
+              border: const OutlineInputBorder(),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -526,181 +477,27 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
-          const Row(
-            children: [
-              Expanded(child: Divider()),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text('OR', style: TextStyle(fontSize: 11, color: Colors.grey)),
-              ),
-              Expanded(child: Divider()),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Google Sign-In Button
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: OutlinedButton(
-              onPressed: state.isLoading ? null : () => _handleGoogleSignIn(state),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: theme.dividerColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          if (state.users.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: () => _handleBiometricLoginPress(state),
+                icon: const Icon(Icons.fingerprint, color: Colors.indigo, size: 24),
+                label: const Text(
+                  'Sign in with Biometrics / Thumb',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.indigo),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.g_mobiledata, color: Colors.indigo, size: 28),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Sign in with Google',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: theme.brightness == Brightness.light ? Colors.grey.shade800 : Colors.white,
-                    ),
-                  ),
-                ],
-              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOtpForm(AppStateProvider state, ThemeData theme) {
-    return Form(
-      key: _otpFormKey,
-      child: Column(
-        key: const ValueKey('otp_form_content'),
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.mark_email_read_rounded,
-            size: 64,
-            color: Colors.indigo,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'VERIFY EMAIL',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
-              color: theme.brightness == Brightness.light ? Colors.indigo.shade900 : Colors.indigo.shade200,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'We have sent a 6-digit code to Google account:',
-            style: TextStyle(
-              fontSize: 12,
-              color: theme.hintColor,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            state.pendingOtpUser?.email ?? '',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-
-          if (_otpErrorMessage != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade400.withValues(alpha: 0.5)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red.shade400, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _otpErrorMessage!,
-                      style: TextStyle(color: Colors.red.shade400, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          TextFormField(
-            controller: _otpController,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 16.0,
-              fontFamily: 'monospace',
-            ),
-            decoration: const InputDecoration(
-              hintText: '000000',
-              hintStyle: TextStyle(color: Colors.grey, letterSpacing: 16.0),
-              counterText: '',
-              prefixIcon: Icon(Icons.vpn_key_outlined),
-              border: OutlineInputBorder(),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().length != 6) {
-                return 'Please enter the 6-digit verification code';
-              }
-              if (int.tryParse(value) == null) {
-                return 'Code must contain digits only';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 24),
-
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: state.isLoading ? null : () => _submitOtp(state),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: state.isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      'Verify & Login',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _otpErrorMessage = null;
-                _otpController.clear();
-              });
-              state.cancelOtpSession();
-            },
-            child: const Text('Back to Sign In'),
-          ),
+          ],
         ],
       ),
     );
@@ -792,11 +589,22 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _registerPasswordController,
-            obscureText: true,
-            decoration: const InputDecoration(
+            obscureText: _obscureRegisterPassword,
+            decoration: InputDecoration(
               labelText: 'Password',
-              prefixIcon: Icon(Icons.lock_outline),
-              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureRegisterPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: theme.hintColor,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscureRegisterPassword = !_obscureRegisterPassword;
+                  });
+                },
+              ),
+              border: const OutlineInputBorder(),
             ),
             validator: (v) {
               if (v == null || v.isEmpty) return 'Password is required';
@@ -807,11 +615,22 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _registerConfirmPasswordController,
-            obscureText: true,
-            decoration: const InputDecoration(
+            obscureText: _obscureRegisterConfirmPassword,
+            decoration: InputDecoration(
               labelText: 'Confirm Password',
-              prefixIcon: Icon(Icons.lock_outline),
-              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureRegisterConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: theme.hintColor,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscureRegisterConfirmPassword = !_obscureRegisterConfirmPassword;
+                  });
+                },
+              ),
+              border: const OutlineInputBorder(),
             ),
             validator: (v) {
               if (v == null || v.isEmpty) return 'Please confirm your password';
@@ -857,6 +676,9 @@ class _LoginScreenState extends State<LoginScreen> {
         _registerEmailController.text,
         _registerPasswordController.text,
       );
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
     } catch (e) {
       setState(() {
         _registerErrorMessage = 'Failed to create admin: $e';

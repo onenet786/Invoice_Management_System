@@ -8,7 +8,7 @@ class UserModel {
   final String id;
   final String name;
   final String email;
-  final String password;
+  final String password; // Stores hashed password (salt:hash format)
   final UserRole role;
 
   UserModel({
@@ -39,6 +39,22 @@ class UserModel {
         (e) => e.name == json['role'],
         orElse: () => UserRole.viewer,
       ),
+    );
+  }
+
+  UserModel copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? password,
+    UserRole? role,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      role: role ?? this.role,
     );
   }
 }
