@@ -6,6 +6,7 @@ import '../../../models/invoice_model.dart';
 import '../../../models/invoice_item_model.dart';
 import '../../../models/client_model.dart';
 import '../../../models/product_model.dart';
+import '../../../services/whatsapp_service.dart';
 
 class InvoiceWizardScreen extends StatefulWidget {
   final InvoiceModel? invoice;
@@ -154,6 +155,35 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
         grandTotal: _grandTotal,
       );
       await state.addInvoice(newInvoice);
+
+      // Auto-send new invoice via WhatsApp to the target number if webhook is configured
+      if (state.n8nWebhookUrl.isNotEmpty) {
+        final client = state.clients.firstWhere(
+          (c) => c.id == newInvoice.clientId,
+          orElse: () => ClientModel(
+            id: '',
+            name: 'Unknown Client',
+            email: '',
+            phone: '',
+            billingAddress: '',
+            shippingAddress: '',
+          ),
+        );
+        final targetClient = client.copyWith(phone: '923214424625');
+        WhatsAppService.sendInvoiceWhatsApp(
+          invoice: newInvoice,
+          client: targetClient,
+          company: state.company,
+          webhookUrl: state.n8nWebhookUrl,
+          apiKey: state.n8nApiKey,
+        ).then((success) {
+          if (success) {
+            debugPrint('Auto-sent new invoice via WhatsApp successfully.');
+          } else {
+            debugPrint('Failed to auto-send new invoice via WhatsApp.');
+          }
+        });
+      }
     } else {
       // Edit
       final updatedInvoice = widget.invoice!.copyWith(

@@ -13,6 +13,7 @@ import '../../providers/app_state_provider.dart';
 import '../../models/company_model.dart';
 import '../../models/user_model.dart';
 import '../../utils/date_format_util.dart';
+import '../../services/whatsapp_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1084,33 +1085,178 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             if (canEdit && state.n8nEnabled) ...[
               const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: () {
-                    state.updateN8nSettings(
-                      enabled: state.n8nEnabled,
-                      webhookUrl: _n8nWebhookUrlController.text.trim(),
-                      apiKey: _n8nApiKeyController.text.trim(),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('WhatsApp & n8n settings updated successfully.'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _showTestWhatsAppDialog(state),
+                    icon: const Icon(Icons.play_arrow, color: Colors.green),
+                    label: const Text('Test Integration', style: TextStyle(color: Colors.green)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.green),
+                    ),
                   ),
-                  child: const Text('Save WhatsApp Config'),
-                ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      state.updateN8nSettings(
+                        enabled: state.n8nEnabled,
+                        webhookUrl: _n8nWebhookUrlController.text.trim(),
+                        apiKey: _n8nApiKeyController.text.trim(),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('WhatsApp & n8n settings updated successfully.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Save WhatsApp Config'),
+                  ),
+                ],
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  void _showTestWhatsAppDialog(AppStateProvider state) {
+    final phoneController = TextEditingController();
+    final messageController = TextEditingController(text: 'Hello! This is a test message from my Invoice Management System connected via n8n & EvolutionAPI.');
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.chat_bubble_outline, color: Colors.green),
+              SizedBox(width: 8),
+              Text('Test WhatsApp Dispatch'),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Send a custom test message with a sample invoice PDF to verify your n8n workflow and EvolutionAPI routing.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Recipient Phone Number',
+                      hintText: 'e.g., 923001234567',
+                      prefixIcon: Icon(Icons.phone),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Phone number is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: messageController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Test Message Text',
+                      alignLabelWithHint: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Message text is required';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                
+                final phone = phoneController.text.trim();
+                final msg = messageController.text.trim();
+                
+                Navigator.of(context).pop(); // Close dialog first
+                
+                // Show loading spinner
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(
+                    child: CircularProgressIndicator(color: Colors.green),
+                  ),
+                );
+
+                final navigator = Navigator.of(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                
+                final success = await WhatsAppService.sendTestWhatsApp(
+                  phone: phone,
+                  message: msg,
+                  webhookUrl: state.n8nWebhookUrl.isEmpty 
+                      ? _n8nWebhookUrlController.text.trim()
+                      : state.n8nWebhookUrl,
+                  company: state.company,
+                  apiKey: state.n8nApiKey.isEmpty
+                      ? _n8nApiKeyController.text.trim()
+                      : state.n8nApiKey,
+                );
+                
+                if (!mounted) return;
+                
+                navigator.pop(); // Pop spinner
+                
+                if (success) {
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Test message successfully sent to n8n webhook!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to send test message. Check your n8n webhook URL and connection.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Send Test'),
+            ),
+          ],
+        );
+      },
     );
   }
 
