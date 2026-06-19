@@ -156,9 +156,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
       );
       await state.addInvoice(newInvoice);
 
-      // Auto-send new invoice via WhatsApp to the target number if webhook is configured
-      if (state.n8nWebhookUrl.isNotEmpty) {
-        final client = state.clients.firstWhere(
+      // Auto-send new invoice via WhatsApp to the client if webhook is configured and client has a phone number
+      if (state.n8nEnabled && state.n8nWebhookUrl.isNotEmpty) {
+        final invoiceClient = state.clients.firstWhere(
           (c) => c.id == newInvoice.clientId,
           orElse: () => ClientModel(
             id: '',
@@ -169,20 +169,27 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
             shippingAddress: '',
           ),
         );
-        final targetClient = client.copyWith(phone: '923214424625');
-        WhatsAppService.sendInvoiceWhatsApp(
-          invoice: newInvoice,
-          client: targetClient,
-          company: state.company,
-          webhookUrl: state.n8nWebhookUrl,
-          apiKey: state.n8nApiKey,
-        ).then((success) {
-          if (success) {
-            debugPrint('Auto-sent new invoice via WhatsApp successfully.');
-          } else {
-            debugPrint('Failed to auto-send new invoice via WhatsApp.');
-          }
-        });
+        if (invoiceClient.phone.isNotEmpty) {
+          WhatsAppService.sendInvoiceWhatsApp(
+            invoice: newInvoice,
+            client: invoiceClient,
+            company: state.company,
+            webhookUrl: state.n8nWebhookUrl,
+            apiKey: state.n8nApiKey,
+            template: state.selectedTemplate,
+            sendText: state.whatsAppSendText,
+            sendPdf: state.whatsAppSendPdf,
+            sendImage: state.whatsAppSendImage,
+          ).then((success) {
+            if (success) {
+              debugPrint('Auto-sent new invoice via WhatsApp successfully to ${invoiceClient.phone}.');
+            } else {
+              debugPrint('Failed to auto-send new invoice via WhatsApp to ${invoiceClient.phone}.');
+            }
+          });
+        } else {
+          debugPrint('Skipping auto-send: client has no phone number configured.');
+        }
       }
     } else {
       // Edit

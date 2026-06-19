@@ -6,22 +6,22 @@ import 'providers/app_state_provider.dart';
 import 'views/auth/login_screen.dart';
 import 'views/shell_navigation.dart';
 
-void main() async {
-  // Ensure Flutter engine bindings are initialized prior to loading storage
-  WidgetsFlutterBinding.ensureInitialized();
-  
+void main() {
   // Global error handling: catch Flutter framework errors
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
     debugPrint('Flutter Error: ${details.exceptionAsString()}');
   };
 
-  // Initialize storage persistence engine
-  final storageService = await StorageService.init();
-
   // Global error handling: catch async errors outside Flutter framework
   runZonedGuarded(
-    () {
+    () async {
+      // Ensure Flutter engine bindings are initialized prior to loading storage
+      WidgetsFlutterBinding.ensureInitialized();
+
+      // Initialize storage persistence engine
+      final storageService = await StorageService.init();
+
       runApp(
         MultiProvider(
           providers: [

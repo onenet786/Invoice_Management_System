@@ -146,12 +146,12 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
   void _sendWhatsApp() async {
     final state = Provider.of<AppStateProvider>(context, listen: false);
-    final client = state.clients.firstWhere(
+    final invoiceClient = state.clients.firstWhere(
       (c) => c.id == _currentInvoice.clientId,
       orElse: () => ClientModel(id: '', name: 'Unknown', email: '', phone: '', billingAddress: '', shippingAddress: ''),
     );
 
-    if (client.id.isEmpty || client.phone.isEmpty) {
+    if (invoiceClient.id.isEmpty || invoiceClient.phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Client phone number is not configured.'), backgroundColor: Colors.orange),
       );
@@ -176,10 +176,14 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
     final success = await WhatsAppService.sendInvoiceWhatsApp(
       invoice: _currentInvoice,
-      client: client,
+      client: invoiceClient,
       company: state.company,
       webhookUrl: state.n8nWebhookUrl,
       apiKey: state.n8nApiKey,
+      template: state.selectedTemplate,
+      sendText: state.whatsAppSendText,
+      sendPdf: state.whatsAppSendPdf,
+      sendImage: state.whatsAppSendImage,
     );
 
     // Pop the loading indicator
@@ -488,8 +492,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   }
 
   Widget _buildDetailsCard(ClientModel client, AppStateProvider state, ThemeData theme) {
-    final comp = state.company;
-
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -505,10 +507,10 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   children: [
                     Text('FROM:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: theme.hintColor)),
                     const SizedBox(height: 8),
-                    Text(comp.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text(state.company.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                     const SizedBox(height: 4),
-                    Text(comp.address, style: const TextStyle(fontSize: 12)),
-                    Text('Tax ID: ${comp.taxId}', style: const TextStyle(fontSize: 12)),
+                    Text(state.company.address, style: const TextStyle(fontSize: 12)),
+                    Text('Tax ID: ${state.company.taxId}', style: const TextStyle(fontSize: 12)),
                   ],
                 );
 

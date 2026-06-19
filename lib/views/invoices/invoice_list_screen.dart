@@ -131,12 +131,12 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
 
   void _sendInvoiceWhatsApp(InvoiceModel invoice) async {
     final state = Provider.of<AppStateProvider>(context, listen: false);
-    final client = state.clients.firstWhere(
+    final invoiceClient = state.clients.firstWhere(
       (c) => c.id == invoice.clientId,
       orElse: () => ClientModel(id: '', name: 'Unknown', email: '', phone: '', billingAddress: '', shippingAddress: ''),
     );
 
-    if (client.id.isEmpty || client.phone.isEmpty) {
+    if (invoiceClient.id.isEmpty || invoiceClient.phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Error: Selected client does not have a valid phone number configured.'),
@@ -167,10 +167,14 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
 
     final success = await WhatsAppService.sendInvoiceWhatsApp(
       invoice: invoice,
-      client: client,
+      client: invoiceClient,
       company: state.company,
       webhookUrl: state.n8nWebhookUrl,
       apiKey: state.n8nApiKey,
+      template: state.selectedTemplate,
+      sendText: state.whatsAppSendText,
+      sendPdf: state.whatsAppSendPdf,
+      sendImage: state.whatsAppSendImage,
     );
 
     // Pop loading

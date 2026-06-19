@@ -9,28 +9,35 @@ import 'pdf_service.dart';
 
 class WhatsAppService {
   // ─────────────────────────────────────────────────────────
-  // HELPER: Normalize phone number to international format
+  // HELPER: Normalize phone to international format
   // Strips non-digits, converts 0XXX → 92XXX (Pakistan)
   // ─────────────────────────────────────────────────────────
   static String _normalizePhone(String raw) {
-    // Remove all non-digit characters
     String digits = raw.replaceAll(RegExp(r'\D'), '');
-
-    // If starts with 0, replace with Pakistan country code
     if (digits.startsWith('0')) {
       digits = '92${digits.substring(1)}';
     }
-
-    // If starts with +92, just remove the +
     if (digits.startsWith('+')) {
       digits = digits.substring(1);
     }
-
     return digits;
   }
 
   // ─────────────────────────────────────────────────────────
-  // HELPER: Build WhatsApp message text
+  // HELPER: Clean Base64 image payload (strip data URI prefix)
+  // ─────────────────────────────────────────────────────────
+  static String _cleanImage(String logo) {
+    if (logo.startsWith('http://') || logo.startsWith('https://')) {
+      return logo;
+    }
+    if (logo.contains('base64,')) {
+      return logo.split('base64,').last.trim();
+    }
+    return logo.trim();
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // HELPER: Build formatted WhatsApp invoice message
   // ─────────────────────────────────────────────────────────
   static String _buildMessageText({
     required InvoiceModel invoice,
@@ -39,18 +46,15 @@ class WhatsAppService {
   }) {
     final String issueStr = DateFormatUtil.toIsoDate(invoice.issueDate);
     final String dueStr = DateFormatUtil.toIsoDate(invoice.dueDate);
-
     final itemsList = invoice.items
         .map(
           (item) =>
-              '• ${item.productName} (x${item.quantity}): '
-              '${company.currency}${item.lineTotal.toStringAsFixed(2)}',
+              '• ${item.productName} (x${item.quantity}): ${company.currency}${item.lineTotal.toStringAsFixed(2)}',
         )
         .join('\n');
 
     return '*Dear ${client.name},*\n\n'
-        'Please find the summary of your *Invoice ${invoice.invoiceNumber}* '
-        'from *${company.name}*.\n\n'
+        'Please find the summary of your *Invoice ${invoice.invoiceNumber}* from *${company.name}*.\n\n'
         '*Invoice Details:*\n'
         '• Issue Date: $issueStr\n'
         '• Due Date: $dueStr\n'
@@ -62,7 +66,7 @@ class WhatsAppService {
   }
 
   // ─────────────────────────────────────────────────────────
-  // HELPER: Send POST request to n8n webhook
+  // HELPER: POST to n8n webhook
   // ─────────────────────────────────────────────────────────
   static Future<bool> _postToWebhook({
     required String webhookUrl,
@@ -70,12 +74,10 @@ class WhatsAppService {
     String? apiKey,
   }) async {
     final Map<String, String> headers = {'Content-Type': 'application/json'};
-
     if (apiKey != null && apiKey.isNotEmpty) {
       headers['Authorization'] = 'Bearer $apiKey';
       headers['x-api-key'] = apiKey;
     }
-
     try {
       final response = await http
           .post(
@@ -84,15 +86,12 @@ class WhatsAppService {
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 30));
-
       if (response.statusCode >= 200 && response.statusCode < 300) {
         debugPrint('WhatsApp webhook success: ${response.body}');
         return true;
       } else {
         debugPrint(
-          'WhatsApp webhook error: '
-          'Status ${response.statusCode}, '
-          'Body: ${response.body}',
+          'WhatsApp webhook error: Status ${response.statusCode}, Body: ${response.body}',
         );
         return false;
       }
@@ -104,7 +103,8 @@ class WhatsAppService {
 
   // ─────────────────────────────────────────────────────────
   // METHOD 1: Send Real Invoice via WhatsApp
-  // Called when user taps "Send Invoice" on invoice screen
+  // company.phone = sender (EvolutionAPI instance number)
+  // client.phone  = recipient
   // ─────────────────────────────────────────────────────────
   static Future<bool> sendInvoiceWhatsApp({
     required InvoiceModel invoice,
@@ -112,58 +112,89 @@ class WhatsAppService {
     required CompanyModel company,
     required String webhookUrl,
     String? apiKey,
+    String template = 'classic',
+    bool sendText = true,
+    bool sendPdf = true,
+    bool sendImage = true,
   }) async {
     if (webhookUrl.isEmpty) {
       debugPrint('WhatsApp: webhookUrl is empty');
       return false;
     }
-
     try {
-      // 1. Normalize phone number
+      // Normalize recipient phone
       final String phone = _normalizePhone(client.phone);
       if (phone.length < 10) {
-        debugPrint('WhatsApp: invalid phone number: ${client.phone}');
+        debugPrint('WhatsApp: invalid recipient phone: ${client.phone}');
         return false;
       }
 
-      // 2. Generate PDF
-      final pdfBytes = await PdfService.generateInvoicePdf(
-        invoice: invoice,
-        client: client,
-        company: company,
-      );
-      final String pdfBase64 = base64Encode(pdfBytes);
+      // Determine sender instance (prefer custom instance name, fallback to normalized company phone, fallback to default reports4)
+      final String sender = company.whatsappInstance.isNotEmpty
+          ? company.whatsappInstance
+          : (company.phone.isNotEmpty ? _normalizePhone(company.phone) : 'reports4');
 
-      // 3. Build message text
+      String? pdfBase64;
+      if (sendPdf) {
+        // Generate PDF
+        final pdfBytes = await PdfService.generateInvoicePdf(
+          invoice: invoice,
+          client: client,
+          company: company,
+          template: template,
+        );
+        pdfBase64 = base64Encode(pdfBytes);
+      }
+
+      // Build message
       final String message = _buildMessageText(
         invoice: invoice,
         client: client,
         company: company,
       );
 
-      // 4. Build payload — matches n8n Parse & Validate Payload node
+      // Build payload matching n8n Parse & Validate node
       final Map<String, dynamic> payload = {
         'event': 'invoice.send',
         'timestamp': DateTime.now().toIso8601String(),
-
-        // ── Fields n8n reads directly ──
+        // n8n reads these directly
         'phone': phone,
-        'message': message,
-        'pdf_base64': pdfBase64,
-        'fileName': 'Invoice-${invoice.invoiceNumber}.pdf',
-
-        // ── Nested objects (fallback fields in n8n) ──
+        if (sendText) 'message': message,
+        if (sendPdf && pdfBase64 != null) ...{
+          'pdf_base64': pdfBase64,
+          'fileName': 'Invoice-${invoice.invoiceNumber}.pdf',
+        },
+        // Nested fallbacks
         'invoice': {
           ...invoice.toJson(),
-          'filename': 'Invoice-${invoice.invoiceNumber}.pdf',
-          'pdf': pdfBase64,
+          if (sendPdf && pdfBase64 != null) ...{
+            'filename': 'Invoice-${invoice.invoiceNumber}.pdf',
+            'pdf': pdfBase64,
+          },
         },
-        'client': {
-          ...client.toJson(),
-          'phone': phone, // normalized
-        },
+        'client': {...client.toJson(), 'phone': phone},
         'company': company.toJson(),
       };
+
+      debugPrint('WhatsApp Service: Raw company.phone = "${company.phone}"');
+      debugPrint('WhatsApp Service: Raw company.whatsappInstance = "${company.whatsappInstance}"');
+      debugPrint('WhatsApp Service: Selected sender/instance = "$sender"');
+
+      // Add sender if available
+      if (sender.isNotEmpty) {
+        payload['sender'] = sender;
+        payload['sender_phone'] = sender;
+        payload['senderPhone'] = sender;
+        payload['sender_number'] = sender;
+        payload['senderNumber'] = sender;
+      }
+
+      // Add company logo as image if available
+      if (sendImage && company.logo.isNotEmpty) {
+        payload['image'] = _cleanImage(company.logo);
+      }
+
+      debugPrint('WhatsApp webhook payload: ${jsonEncode(payload)}');
 
       return await _postToWebhook(
         webhookUrl: webhookUrl,
@@ -177,8 +208,9 @@ class WhatsAppService {
   }
 
   // ─────────────────────────────────────────────────────────
-  // METHOD 2: Send Test WhatsApp Message
-  // Called from Settings → Test Integration dialog
+  // METHOD 2: Send Test WhatsApp (from Settings dialog)
+  // company.phone = sender (set in Company Profile card)
+  // phone param   = recipient (entered in test dialog)
   // ─────────────────────────────────────────────────────────
   static Future<bool> sendTestWhatsApp({
     required String phone,
@@ -186,21 +218,29 @@ class WhatsAppService {
     required String webhookUrl,
     required CompanyModel company,
     String? apiKey,
+    String template = 'classic',
+    bool sendText = true,
+    bool sendPdf = true,
+    bool sendImage = true,
   }) async {
     if (webhookUrl.isEmpty) {
       debugPrint('WhatsApp: webhookUrl is empty');
       return false;
     }
-
     try {
-      // 1. Normalize phone
+      // Normalize recipient phone
       final String normalizedPhone = _normalizePhone(phone);
       if (normalizedPhone.length < 10) {
-        debugPrint('WhatsApp: invalid phone number: $phone');
+        debugPrint('WhatsApp: invalid phone: $phone');
         return false;
       }
 
-      // 2. Create dummy client
+      // Sender = custom instance name or normalized company phone or default reports4
+      final String sender = company.whatsappInstance.isNotEmpty
+          ? company.whatsappInstance
+          : (company.phone.isNotEmpty ? _normalizePhone(company.phone) : 'reports4');
+
+      // Dummy client using recipient phone
       final dummyClient = ClientModel(
         id: 'test-client',
         name: 'Test Recipient',
@@ -210,7 +250,7 @@ class WhatsAppService {
         shippingAddress: '123 Test Street',
       );
 
-      // 3. Create dummy invoice
+      // Dummy invoice
       final dummyInvoice = InvoiceModel(
         id: 'test-inv-id',
         invoiceNumber: 'TEST-0001',
@@ -225,34 +265,60 @@ class WhatsAppService {
         notes: 'This is a test invoice message.',
       );
 
-      // 4. Generate test PDF
-      final pdfBytes = await PdfService.generateInvoicePdf(
-        invoice: dummyInvoice,
-        client: dummyClient,
-        company: company,
-      );
-      final String pdfBase64 = base64Encode(pdfBytes);
+      String? pdfBase64;
+      if (sendPdf) {
+        // Generate test PDF
+        final pdfBytes = await PdfService.generateInvoicePdf(
+          invoice: dummyInvoice,
+          client: dummyClient,
+          company: company,
+          template: template,
+        );
+        pdfBase64 = base64Encode(pdfBytes);
+      }
 
-      // 5. Build payload — matches n8n Parse & Validate Payload node
+      // Build payload matching n8n Parse & Validate node
       final Map<String, dynamic> payload = {
         'event': 'invoice.test',
         'timestamp': DateTime.now().toIso8601String(),
-
-        // ── Fields n8n reads directly ──
+        // n8n reads these directly
         'phone': normalizedPhone,
-        'message': message,
-        'pdf_base64': pdfBase64,
-        'fileName': 'Test-Invoice-TEST-0001.pdf',
-
-        // ── Nested objects (fallback fields in n8n) ──
+        if (sendText) 'message': message,
+        if (sendPdf && pdfBase64 != null) ...{
+          'pdf_base64': pdfBase64,
+          'fileName': 'Test-Invoice-TEST-0001.pdf',
+        },
+        // Nested fallbacks
         'invoice': {
           ...dummyInvoice.toJson(),
-          'filename': 'Test-Invoice-TEST-0001.pdf',
-          'pdf': pdfBase64,
+          if (sendPdf && pdfBase64 != null) ...{
+            'filename': 'Test-Invoice-TEST-0001.pdf',
+            'pdf': pdfBase64,
+          },
         },
         'client': {...dummyClient.toJson(), 'phone': normalizedPhone},
         'company': company.toJson(),
       };
+
+      debugPrint('WhatsApp Service: Raw company.phone = "${company.phone}"');
+      debugPrint('WhatsApp Service: Raw company.whatsappInstance = "${company.whatsappInstance}"');
+      debugPrint('WhatsApp Service: Selected sender/instance = "$sender"');
+
+      // Add sender if available
+      if (sender.isNotEmpty) {
+        payload['sender'] = sender;
+        payload['sender_phone'] = sender;
+        payload['senderPhone'] = sender;
+        payload['sender_number'] = sender;
+        payload['senderNumber'] = sender;
+      }
+
+      // Add company logo as image if available
+      if (sendImage && company.logo.isNotEmpty) {
+        payload['image'] = _cleanImage(company.logo);
+      }
+
+      debugPrint('WhatsApp test webhook payload: ${jsonEncode(payload)}');
 
       return await _postToWebhook(
         webhookUrl: webhookUrl,
@@ -266,29 +332,31 @@ class WhatsAppService {
   }
 
   // ─────────────────────────────────────────────────────────
-  // METHOD 3: Send Text-Only WhatsApp Message
-  // For quick notifications without PDF attachment
+  // METHOD 3: Send Text-Only (no PDF/image)
+  // For quick payment reminders, notifications, etc.
   // ─────────────────────────────────────────────────────────
   static Future<bool> sendTextOnlyWhatsApp({
     required String phone,
     required String message,
     required String webhookUrl,
     String? apiKey,
+    String? senderPhone,
   }) async {
     if (webhookUrl.isEmpty) {
       debugPrint('WhatsApp: webhookUrl is empty');
       return false;
     }
-
     try {
       final String normalizedPhone = _normalizePhone(phone);
       if (normalizedPhone.length < 10) {
-        debugPrint('WhatsApp: invalid phone number: $phone');
+        debugPrint('WhatsApp: invalid phone: $phone');
         return false;
       }
 
-      // Minimal payload — no PDF, no image
-      // n8n will send text only and skip PDF/image branches
+      final String sender = senderPhone != null && senderPhone.isNotEmpty
+          ? _normalizePhone(senderPhone)
+          : '';
+
       final Map<String, dynamic> payload = {
         'event': 'text.send',
         'timestamp': DateTime.now().toIso8601String(),
@@ -296,6 +364,19 @@ class WhatsAppService {
         'message': message,
         'client': {'phone': normalizedPhone, 'name': 'Customer'},
       };
+
+      debugPrint('WhatsApp Service: Raw senderPhone = "$senderPhone"');
+      debugPrint('WhatsApp Service: Selected sender/instance = "$sender"');
+
+      if (sender.isNotEmpty) {
+        payload['sender'] = sender;
+        payload['sender_phone'] = sender;
+        payload['senderPhone'] = sender;
+        payload['sender_number'] = sender;
+        payload['senderNumber'] = sender;
+      }
+
+      debugPrint('WhatsApp text-only webhook payload: ${jsonEncode(payload)}');
 
       return await _postToWebhook(
         webhookUrl: webhookUrl,

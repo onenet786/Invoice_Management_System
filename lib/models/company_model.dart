@@ -4,6 +4,8 @@ class CompanyModel {
   final String taxId;
   final String address;
   final String currency; // currency symbol e.g., "$", "PKR", "€"
+  final String phone;
+  final String whatsappInstance; // EvolutionAPI instance name e.g., "reports4"
 
   CompanyModel({
     required this.name,
@@ -11,6 +13,8 @@ class CompanyModel {
     required this.taxId,
     required this.address,
     required this.currency,
+    required this.phone,
+    required this.whatsappInstance,
   });
 
   Map<String, dynamic> toJson() {
@@ -20,6 +24,8 @@ class CompanyModel {
       'taxId': taxId,
       'address': address,
       'currency': currency,
+      'phone': phone,
+      'whatsappInstance': whatsappInstance,
     };
   }
 
@@ -30,6 +36,8 @@ class CompanyModel {
       taxId: json['taxId'] as String? ?? 'TAX-882200-XX',
       address: json['address'] as String? ?? '123 Tech Avenue, Suite 100, Silicon Valley, CA',
       currency: json['currency'] as String? ?? 'PKR',
+      phone: json['phone'] as String? ?? '',
+      whatsappInstance: json['whatsappInstance'] as String? ?? '',
     );
   }
 
@@ -39,6 +47,8 @@ class CompanyModel {
     String? taxId,
     String? address,
     String? currency,
+    String? phone,
+    String? whatsappInstance,
   }) {
     return CompanyModel(
       name: name ?? this.name,
@@ -46,6 +56,8 @@ class CompanyModel {
       taxId: taxId ?? this.taxId,
       address: address ?? this.address,
       currency: currency ?? this.currency,
+      phone: phone ?? this.phone,
+      whatsappInstance: whatsappInstance ?? this.whatsappInstance,
     );
   }
 }

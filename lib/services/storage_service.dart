@@ -22,6 +22,10 @@ class StorageService {
   static const String _keyN8nWebhookUrl = 'n8n_webhook_url';
   static const String _keyN8nApiKey = 'n8n_api_key';
   static const String _keyN8nEnabled = 'n8n_enabled';
+  static const String _keyInvoiceTemplate = 'invoice_template';
+  static const String _keyWhatsAppSendText = 'whatsapp_send_text';
+  static const String _keyWhatsAppSendPdf = 'whatsapp_send_pdf';
+  static const String _keyWhatsAppSendImage = 'whatsapp_send_image';
 
   final SharedPreferences _prefs;
 
@@ -48,6 +52,8 @@ class StorageService {
         taxId: 'TAX-2026-SOLARIT',
         address: '123 Renewable Energy Way, Suite 4B, Austin, TX 78701',
         currency: 'PKR',
+        phone: '',
+        whatsappInstance: 'reports4',
       );
       await saveCompany(company);
 
@@ -244,6 +250,8 @@ class StorageService {
         taxId: 'TAX-2026-SOLARIT',
         address: '123 Renewable Energy Way, Suite 4B, Austin, TX 78701',
         currency: 'PKR',
+        phone: '',
+        whatsappInstance: 'reports4',
       );
     }
     return CompanyModel.fromJson(json.decode(str) as Map<String, dynamic>);
@@ -371,4 +379,21 @@ class StorageService {
   Future<void> saveN8nEnabled(bool value) async {
     await _prefs.setBool(_keyN8nEnabled, value);
   }
+
+  String getInvoiceTemplate() {
+    return _prefs.getString(_keyInvoiceTemplate) ?? 'classic';
+  }
+
+  Future<void> saveInvoiceTemplate(String value) async {
+    await _prefs.setString(_keyInvoiceTemplate, value);
+  }
+
+  bool getWhatsAppSendText() => _prefs.getBool(_keyWhatsAppSendText) ?? true;
+  Future<void> saveWhatsAppSendText(bool val) => _prefs.setBool(_keyWhatsAppSendText, val);
+
+  bool getWhatsAppSendPdf() => _prefs.getBool(_keyWhatsAppSendPdf) ?? true;
+  Future<void> saveWhatsAppSendPdf(bool val) => _prefs.setBool(_keyWhatsAppSendPdf, val);
+
+  bool getWhatsAppSendImage() => _prefs.getBool(_keyWhatsAppSendImage) ?? true;
+  Future<void> saveWhatsAppSendImage(bool val) => _prefs.setBool(_keyWhatsAppSendImage, val);
 }

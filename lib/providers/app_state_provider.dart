@@ -63,12 +63,32 @@ class AppStateProvider extends ChangeNotifier {
   bool _n8nEnabled = false;
   bool get n8nEnabled => _n8nEnabled;
 
+  String _selectedTemplate = 'classic';
+  String get selectedTemplate => _selectedTemplate;
+
+  bool _whatsAppSendText = true;
+  bool get whatsAppSendText => _whatsAppSendText;
+
+  bool _whatsAppSendPdf = true;
+  bool get whatsAppSendPdf => _whatsAppSendPdf;
+
+  bool _whatsAppSendImage = true;
+  bool get whatsAppSendImage => _whatsAppSendImage;
+
   // Cached client lookup map for O(1) client resolution
   Map<String, ClientModel> _clientMap = {};
   Map<String, ClientModel> get clientMap => _clientMap;
 
   AppStateProvider(this._storage)
-      : _company = CompanyModel(name: 'My Solar & IT Corp', logo: '', taxId: '', address: '', currency: 'PKR') {
+      : _company = CompanyModel(
+          name: 'My Solar & IT Corp',
+          logo: '',
+          taxId: '',
+          address: '',
+          currency: 'PKR',
+          phone: '',
+          whatsappInstance: 'reports4',
+        ) {
     _loadAllData();
   }
 
@@ -88,6 +108,10 @@ class AppStateProvider extends ChangeNotifier {
     _n8nWebhookUrl = _storage.getN8nWebhookUrl();
     _n8nApiKey = _storage.getN8nApiKey();
     _n8nEnabled = _storage.getN8nEnabled();
+    _selectedTemplate = _storage.getInvoiceTemplate();
+    _whatsAppSendText = _storage.getWhatsAppSendText();
+    _whatsAppSendPdf = _storage.getWhatsAppSendPdf();
+    _whatsAppSendImage = _storage.getWhatsAppSendImage();
 
     // Load persisted theme preference
     _themeMode = _storage.getThemeMode();
@@ -663,6 +687,26 @@ class AppStateProvider extends ChangeNotifier {
     await _storage.saveN8nWebhookUrl(_n8nWebhookUrl);
     await _storage.saveN8nApiKey(_n8nApiKey);
 
+    notifyListeners();
+  }
+
+  Future<void> updateSelectedTemplate(String template) async {
+    _selectedTemplate = template;
+    await _storage.saveInvoiceTemplate(template);
+    notifyListeners();
+  }
+
+  Future<void> updateWhatsAppSendOptions({
+    required bool sendText,
+    required bool sendPdf,
+    required bool sendImage,
+  }) async {
+    _whatsAppSendText = sendText;
+    _whatsAppSendPdf = sendPdf;
+    _whatsAppSendImage = sendImage;
+    await _storage.saveWhatsAppSendText(sendText);
+    await _storage.saveWhatsAppSendPdf(sendPdf);
+    await _storage.saveWhatsAppSendImage(sendImage);
     notifyListeners();
   }
 }

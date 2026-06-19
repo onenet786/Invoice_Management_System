@@ -35,6 +35,7 @@ class InvoicePdfPreviewScreen extends StatelessWidget {
           invoice: invoice,
           client: client,
           company: state.company,
+          template: state.selectedTemplate,
         ),
         canDebug: false,
         actions: const [],
