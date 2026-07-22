@@ -14,7 +14,8 @@ class ScanQuotationDialog extends StatefulWidget {
   State<ScanQuotationDialog> createState() => _ScanQuotationDialogState();
 }
 
-class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTickerProviderStateMixin {
+class _ScanQuotationDialogState extends State<ScanQuotationDialog>
+    with SingleTickerProviderStateMixin {
   ScannedQuoteTemplate? _selectedTemplate;
   bool _isScanning = false;
   bool _isScanned = false;
@@ -58,7 +59,7 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
       'Extracted line item: ${_selectedTemplate!.items[1].productName} (x${_selectedTemplate!.items[1].quantity})',
       'Parsed currency: \$ (Standard USD rate mappings)',
       'Parsed Terms: ${_selectedTemplate!.notes}',
-      'Quotation OCR mapping completed successfully!'
+      'Quotation OCR mapping completed successfully!',
     ];
 
     for (int i = 0; i < steps.length; i++) {
@@ -85,10 +86,19 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
 
     // Try to match selected template client with client list
     final client = state.clients.firstWhere(
-      (c) => c.name.toLowerCase().contains(_selectedTemplate!.clientName.split(' ')[0].toLowerCase()),
-      orElse: () => state.clients.isNotEmpty 
-          ? state.clients.first 
-          : ClientModel(id: 'c-default', name: 'EcoPower Solutions Inc.', email: 'billing@ecopower.com', phone: '', billingAddress: 'Austin, TX', shippingAddress: 'Austin, TX'),
+      (c) => c.name.toLowerCase().contains(
+        _selectedTemplate!.clientName.split(' ')[0].toLowerCase(),
+      ),
+      orElse: () => state.clients.isNotEmpty
+          ? state.clients.first
+          : ClientModel(
+              id: 'c-default',
+              name: 'EcoPower Solutions Inc.',
+              email: 'billing@ecopower.com',
+              phone: '',
+              billingAddress: 'Austin, TX',
+              shippingAddress: 'Austin, TX',
+            ),
     );
 
     // Create InvoiceItems
@@ -157,17 +167,22 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('1. Select handwritten quote template to scan:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text(
+                      '1. Select handwritten quote template to scan:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ScannedQuoteTemplate>(
                       initialValue: _selectedTemplate,
                       hint: const Text('Select notebook estimate quote...'),
-                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
                       items: OcrScanService.sampleTemplates.map((t) {
-                        return DropdownMenuItem(
-                          value: t,
-                          child: Text(t.title),
-                        );
+                        return DropdownMenuItem(value: t, child: Text(t.title));
                       }).toList(),
                       onChanged: (val) {
                         setState(() {
@@ -199,7 +214,9 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
                                       color: Colors.green,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.green.withValues(alpha: 0.8),
+                                          color: Colors.green.withValues(
+                                            alpha: 0.8,
+                                          ),
                                           blurRadius: 8,
                                           spreadRadius: 2,
                                         ),
@@ -222,20 +239,32 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('2. AI Scanner Logs & Extraction:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text(
+                      '2. AI Scanner Logs & Extraction:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: theme.brightness == Brightness.light ? Colors.grey.shade900 : const Color(0xFF020617),
+                          color: theme.brightness == Brightness.light
+                              ? Colors.grey.shade900
+                              : const Color(0xFF020617),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: _logs.isEmpty 
+                        child: _logs.isEmpty
                             ? const Center(
                                 child: Text(
                                   'Awaiting quotation scan...',
-                                  style: TextStyle(color: Colors.green, fontFamily: 'monospace', fontSize: 12),
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontFamily: 'monospace',
+                                    fontSize: 12,
+                                  ),
                                 ),
                               )
                             : ListView.builder(
@@ -258,7 +287,11 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
                     ),
                     if (_isScanning) ...[
                       const SizedBox(height: 12),
-                      LinearProgressIndicator(value: _progress, color: Colors.green, backgroundColor: Colors.grey.shade300),
+                      LinearProgressIndicator(
+                        value: _progress,
+                        color: Colors.green,
+                        backgroundColor: Colors.grey.shade300,
+                      ),
                     ],
                     if (_isScanned) ...[
                       const SizedBox(height: 12),
@@ -283,14 +316,20 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
             onPressed: _triggerScan,
             icon: const Icon(Icons.document_scanner),
             label: const Text('Initiate OCR Scan'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigo,
+              foregroundColor: Colors.white,
+            ),
           ),
         if (_isScanned)
           ElevatedButton.icon(
             onPressed: _convertToInvoice,
             icon: const Icon(Icons.forward_to_inbox),
             label: const Text('Import to Invoice Wizard'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
           ),
       ],
     );
@@ -315,7 +354,9 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
       width: double.infinity,
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: isLight ? const Color(0xFFFEFCE8) : const Color(0xFF1E293B), // Yellowish ruled paper or dark slate
+        color: isLight
+            ? const Color(0xFFFEFCE8)
+            : const Color(0xFF1E293B), // Yellowish ruled paper or dark slate
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.amber.shade300),
       ),
@@ -345,7 +386,9 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.brightness == Brightness.light ? Colors.green.shade50 : Colors.green.withValues(alpha: 0.1),
+        color: theme.brightness == Brightness.light
+            ? Colors.green.shade50
+            : Colors.green.withValues(alpha: 0.1),
         border: Border.all(color: Colors.green.shade300),
         borderRadius: BorderRadius.circular(8),
       ),
@@ -359,7 +402,11 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog> with SingleTi
               children: [
                 const Text(
                   'Recognized Quote Details',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.green,
+                  ),
                 ),
                 Text(
                   'Items Found: ${_selectedTemplate!.items.length} | Estimate Total: $currency${totalEstimate.toStringAsFixed(2)}',

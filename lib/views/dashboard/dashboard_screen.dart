@@ -27,10 +27,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Apply quick filters to compute custom visual metrics if filtered
     List<InvoiceModel> filteredInvoices = state.invoices;
     if (_selectedClientId != null) {
-      filteredInvoices = filteredInvoices.where((inv) => inv.clientId == _selectedClientId).toList();
+      filteredInvoices = filteredInvoices
+          .where((inv) => inv.clientId == _selectedClientId)
+          .toList();
     }
     if (_selectedStatus != null) {
-      filteredInvoices = filteredInvoices.where((inv) => inv.status == _selectedStatus).toList();
+      filteredInvoices = filteredInvoices
+          .where((inv) => inv.status == _selectedStatus)
+          .toList();
     }
 
     double localRevenue = filteredInvoices
@@ -38,7 +42,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .fold(0.0, (sum, inv) => sum + inv.grandTotal);
 
     double localPending = filteredInvoices
-        .where((inv) => inv.status == InvoiceStatus.sent || inv.status == InvoiceStatus.partiallyPaid)
+        .where(
+          (inv) =>
+              inv.status == InvoiceStatus.sent ||
+              inv.status == InvoiceStatus.partiallyPaid,
+        )
         .fold(0.0, (sum, inv) => sum + inv.grandTotal);
 
     double localOverdue = filteredInvoices
@@ -50,7 +58,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Monthly data calculations
     Map<int, double> monthlySales = {for (var i = 1; i <= 12; i++) i: 0.0};
     for (var inv in filteredInvoices) {
-      if (inv.issueDate.year == _selectedYear && inv.status != InvoiceStatus.draft) {
+      if (inv.issueDate.year == _selectedYear &&
+          inv.status != InvoiceStatus.draft) {
         final m = inv.issueDate.month;
         monthlySales[m] = (monthlySales[m] ?? 0.0) + inv.grandTotal;
       }
@@ -64,10 +73,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Dashboard header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final heading = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -83,9 +91,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ],
-                  ),
-                  _buildFilterResetButton(),
-                ],
+                  );
+                  if (constraints.maxWidth < 650) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        heading,
+                        const SizedBox(height: 16),
+                        _buildFilterResetButton(),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: heading),
+                      const SizedBox(width: 20),
+                      _buildFilterResetButton(),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 24),
 
@@ -96,7 +120,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Stats Row
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final crossCount = constraints.maxWidth > 1100 ? 4 : (constraints.maxWidth > 600 ? 2 : 1);
+                  final crossCount = constraints.maxWidth > 1100
+                      ? 4
+                      : (constraints.maxWidth > 600 ? 2 : 1);
                   return GridView.count(
                     crossAxisCount: crossCount,
                     crossAxisSpacing: 16,
@@ -153,7 +179,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(width: 20),
                         Expanded(
                           flex: 2,
-                          child: _buildStatusPieChartCard(filteredInvoices, theme),
+                          child: _buildStatusPieChartCard(
+                            filteredInvoices,
+                            theme,
+                          ),
                         ),
                       ],
                     );
@@ -176,7 +205,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFilterResetButton() {
-    if (_selectedClientId == null && _selectedStatus == null && _selectedYear == 2026) {
+    if (_selectedClientId == null &&
+        _selectedStatus == null &&
+        _selectedYear == 2026) {
       return const SizedBox.shrink();
     }
     return TextButton.icon(
@@ -208,17 +239,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Icon(Icons.filter_list, size: 20, color: Colors.indigo),
                 SizedBox(width: 8),
-                Text('Quick Filters:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  'Quick Filters:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             // Client Dropdown
             DropdownButton<String>(
               value: _selectedClientId,
+              isExpanded: true,
               hint: const Text('All Clients'),
               underline: const SizedBox(),
               items: [
-                const DropdownMenuItem<String>(value: null, child: Text('All Clients')),
-                ...state.clients.map((c) => DropdownMenuItem<String>(value: c.id, child: Text(c.name))),
+                const DropdownMenuItem<String>(
+                  value: null,
+                  child: Text('All Clients'),
+                ),
+                ...state.clients.map(
+                  (c) => DropdownMenuItem<String>(
+                    value: c.id,
+                    child: Text(c.name),
+                  ),
+                ),
               ],
               onChanged: (val) {
                 setState(() {
@@ -229,15 +272,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // Status Dropdown
             DropdownButton<InvoiceStatus>(
               value: _selectedStatus,
+              isExpanded: true,
               hint: const Text('All Statuses'),
               underline: const SizedBox(),
               items: const [
-                DropdownMenuItem<InvoiceStatus>(value: null, child: Text('All Statuses')),
-                DropdownMenuItem<InvoiceStatus>(value: InvoiceStatus.paid, child: Text('Paid')),
-                DropdownMenuItem<InvoiceStatus>(value: InvoiceStatus.sent, child: Text('Sent')),
-                DropdownMenuItem<InvoiceStatus>(value: InvoiceStatus.overdue, child: Text('Overdue')),
-                DropdownMenuItem<InvoiceStatus>(value: InvoiceStatus.partiallyPaid, child: Text('Partially Paid')),
-                DropdownMenuItem<InvoiceStatus>(value: InvoiceStatus.draft, child: Text('Draft')),
+                DropdownMenuItem<InvoiceStatus>(
+                  value: null,
+                  child: Text('All Statuses'),
+                ),
+                DropdownMenuItem<InvoiceStatus>(
+                  value: InvoiceStatus.paid,
+                  child: Text('Paid'),
+                ),
+                DropdownMenuItem<InvoiceStatus>(
+                  value: InvoiceStatus.sent,
+                  child: Text('Sent'),
+                ),
+                DropdownMenuItem<InvoiceStatus>(
+                  value: InvoiceStatus.overdue,
+                  child: Text('Overdue'),
+                ),
+                DropdownMenuItem<InvoiceStatus>(
+                  value: InvoiceStatus.partiallyPaid,
+                  child: Text('Partially Paid'),
+                ),
+                DropdownMenuItem<InvoiceStatus>(
+                  value: InvoiceStatus.draft,
+                  child: Text('Draft'),
+                ),
               ],
               onChanged: (val) {
                 setState(() {
@@ -248,6 +310,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // Year Dropdown
             DropdownButton<int>(
               value: _selectedYear,
+              isExpanded: true,
               underline: const SizedBox(),
               items: const [
                 DropdownMenuItem<int>(value: 2025, child: Text('Year 2025')),
@@ -325,7 +388,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSalesLineChartCard(Map<int, double> monthlySales, ThemeData theme) {
+  Widget _buildSalesLineChartCard(
+    Map<int, double> monthlySales,
+    ThemeData theme,
+  ) {
     List<FlSpot> spots = [];
     for (int m = 1; m <= 12; m++) {
       spots.add(FlSpot(m.toDouble(), monthlySales[m] ?? 0.0));
@@ -347,10 +413,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Sales Trend - $_selectedYear',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Sales Trend - $_selectedYear',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Icon(Icons.show_chart, color: theme.hintColor),
               ],
             ),
@@ -369,8 +443,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   titlesData: FlTitlesData(
                     show: true,
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
@@ -378,14 +456,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         interval: 1,
                         getTitlesWidget: (value, meta) {
                           const months = [
-                            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                            'Jan',
+                            'Feb',
+                            'Mar',
+                            'Apr',
+                            'May',
+                            'Jun',
+                            'Jul',
+                            'Aug',
+                            'Sep',
+                            'Oct',
+                            'Nov',
+                            'Dec',
                           ];
                           int idx = value.toInt() - 1;
                           if (idx >= 0 && idx < 12) {
                             return SideTitleWidget(
                               axisSide: meta.axisSide,
-                              child: Text(months[idx], style: TextStyle(fontSize: 10, color: theme.hintColor)),
+                              child: Text(
+                                months[idx],
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: theme.hintColor,
+                                ),
+                              ),
                             );
                           }
                           return const SizedBox.shrink();
@@ -401,12 +495,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           if (value >= 1000) {
                             return SideTitleWidget(
                               axisSide: meta.axisSide,
-                              child: Text('\$${(value / 1000).toStringAsFixed(1)}k', style: TextStyle(fontSize: 9, color: theme.hintColor)),
+                              child: Text(
+                                '\$${(value / 1000).toStringAsFixed(1)}k',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: theme.hintColor,
+                                ),
+                              ),
                             );
                           }
                           return SideTitleWidget(
                             axisSide: meta.axisSide,
-                            child: Text('\$${value.toInt()}', style: TextStyle(fontSize: 9, color: theme.hintColor)),
+                            child: Text(
+                              '\$${value.toInt()}',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: theme.hintColor,
+                              ),
+                            ),
                           );
                         },
                       ),
@@ -440,7 +546,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildStatusPieChartCard(List<InvoiceModel> filteredInvoices, ThemeData theme) {
+  Widget _buildStatusPieChartCard(
+    List<InvoiceModel> filteredInvoices,
+    ThemeData theme,
+  ) {
     int paid = 0;
     int pending = 0;
     int overdue = 0;
@@ -498,33 +607,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         PieChartSectionData(
                           color: Colors.green,
                           value: paid.toDouble(),
-                          title: '${((paid / total) * 100).toStringAsFixed(0)}%',
+                          title:
+                              '${((paid / total) * 100).toStringAsFixed(0)}%',
                           radius: 45,
-                          titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                          titleStyle: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       if (pending > 0)
                         PieChartSectionData(
                           color: Colors.amber.shade700,
                           value: pending.toDouble(),
-                          title: '${((pending / total) * 100).toStringAsFixed(0)}%',
+                          title:
+                              '${((pending / total) * 100).toStringAsFixed(0)}%',
                           radius: 45,
-                          titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                          titleStyle: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       if (overdue > 0)
                         PieChartSectionData(
                           color: Colors.red.shade600,
                           value: overdue.toDouble(),
-                          title: '${((overdue / total) * 100).toStringAsFixed(0)}%',
+                          title:
+                              '${((overdue / total) * 100).toStringAsFixed(0)}%',
                           radius: 45,
-                          titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                          titleStyle: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       if (draft > 0)
                         PieChartSectionData(
                           color: Colors.grey.shade600,
                           value: draft.toDouble(),
-                          title: '${((draft / total) * 100).toStringAsFixed(0)}%',
+                          title:
+                              '${((draft / total) * 100).toStringAsFixed(0)}%',
                           radius: 45,
-                          titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                          titleStyle: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                     ],
                   ),

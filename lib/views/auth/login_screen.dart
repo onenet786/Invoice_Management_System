@@ -62,10 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Colors.indigo.shade900,
-              Colors.purple.shade900,
-            ],
+            colors: [Colors.indigo.shade900, Colors.purple.shade900],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -84,7 +81,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     : Colors.grey.shade900.withValues(alpha: 0.92),
                 child: Container(
                   width: 450,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 40,
+                  ),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -102,7 +102,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1.5,
-                            color: theme.brightness == Brightness.light ? Colors.indigo.shade900 : Colors.indigo.shade200,
+                            color: theme.brightness == Brightness.light
+                                ? Colors.indigo.shade900
+                                : Colors.indigo.shade200,
                           ),
                         ),
                         Text(
@@ -113,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 32),
-                        
+
                         if (_errorMessage != null)
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -121,16 +123,27 @@ class _LoginScreenState extends State<LoginScreen> {
                             decoration: BoxDecoration(
                               color: Colors.red.shade50.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red.shade400.withValues(alpha: 0.5)),
+                              border: Border.all(
+                                color: Colors.red.shade400.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.error_outline, color: Colors.red.shade400, size: 20),
+                                Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red.shade400,
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     _errorMessage!,
-                                    style: TextStyle(color: Colors.red.shade400, fontSize: 13),
+                                    style: TextStyle(
+                                      color: Colors.red.shade400,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -149,7 +162,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter your email';
                             }
-                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                            if (!RegExp(
+                              r'^[^@]+@[^@]+\.[^@]+',
+                            ).hasMatch(value)) {
                               return 'Please enter a valid email address';
                             }
                             return null;
@@ -185,30 +200,54 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             child: state.isLoading
-                                ? const CircularProgressIndicator(color: Colors.white)
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
                                 : const Text(
                                     'Sign In',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                           ),
                         ),
-                        
+
                         const SizedBox(height: 32),
                         const Divider(),
                         const SizedBox(height: 16),
-                        
+
                         Text(
                           'Quick Seed Accounts (Tap to fill):',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.hintColor),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: theme.hintColor,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            _buildQuickFillChip('Admin', 'admin@invoice.com', 'admin123', Colors.red.shade400),
-                            _buildQuickFillChip('Manager', 'manager@invoice.com', 'manager123', Colors.amber.shade700),
-                            _buildQuickFillChip('Viewer', 'viewer@invoice.com', 'viewer123', Colors.grey.shade600),
+                            _buildQuickFillChip(
+                              'Admin',
+                              'admin@invoice.com',
+                              'admin123',
+                              Colors.red.shade400,
+                            ),
+                            _buildQuickFillChip(
+                              'Manager',
+                              'manager@invoice.com',
+                              'manager123',
+                              Colors.amber.shade700,
+                            ),
+                            _buildQuickFillChip(
+                              'Viewer',
+                              'viewer@invoice.com',
+                              'viewer123',
+                              Colors.grey.shade600,
+                            ),
                           ],
                         ),
                       ],
@@ -223,11 +262,20 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildQuickFillChip(String label, String email, String password, Color color) {
+  Widget _buildQuickFillChip(
+    String label,
+    String email,
+    String password,
+    Color color,
+  ) {
     return ActionChip(
       label: Text(
         label,
-        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       backgroundColor: color,
       onPressed: () => _quickFill(email, password),

@@ -12,11 +12,16 @@ class EmailService {
     final String issueStr = invoice.issueDate.toIso8601String().split('T')[0];
     final String dueStr = invoice.dueDate.toIso8601String().split('T')[0];
 
-    final subject = Uri.encodeComponent("Invoice ${invoice.invoiceNumber} from ${company.name}");
-    
-    final itemsList = invoice.items.map(
-      (item) => "- ${item.productName} (x${item.quantity}): ${company.currency}${item.lineTotal.toStringAsFixed(2)}"
-    ).join("\n");
+    final subject = Uri.encodeComponent(
+      "Invoice ${invoice.invoiceNumber} from ${company.name}",
+    );
+
+    final itemsList = invoice.items
+        .map(
+          (item) =>
+              "- ${item.productName} (x${item.quantity}): ${company.currency}${item.lineTotal.toStringAsFixed(2)}",
+        )
+        .join("\n");
 
     final body = Uri.encodeComponent(
       "Dear ${client.name},\n\n"
@@ -32,7 +37,7 @@ class EmailService {
       "${invoice.notes.isNotEmpty ? invoice.notes : 'N/A'}\n\n"
       "Best regards,\n"
       "${company.name}\n"
-      "${company.address}"
+      "${company.address}",
     );
 
     final Uri emailLaunchUri = Uri(

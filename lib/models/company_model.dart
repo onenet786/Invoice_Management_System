@@ -28,7 +28,9 @@ class CompanyModel {
       name: json['name'] as String? ?? 'My Solar & IT Corp',
       logo: json['logo'] as String? ?? '',
       taxId: json['taxId'] as String? ?? 'TAX-882200-XX',
-      address: json['address'] as String? ?? '123 Tech Avenue, Suite 100, Silicon Valley, CA',
+      address:
+          json['address'] as String? ??
+          '123 Tech Avenue, Suite 100, Silicon Valley, CA',
       currency: json['currency'] as String? ?? '\$',
     );
   }

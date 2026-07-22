@@ -80,14 +80,20 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
   void _addTempItem() {
     if (_tempSelectedProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a product from the catalog.')),
+        const SnackBar(
+          content: Text('Please select a product from the catalog.'),
+        ),
       );
       return;
     }
 
     final qty = int.tryParse(_tempQtyController.text) ?? 1;
-    final price = double.tryParse(_tempPriceController.text) ?? _tempSelectedProduct!.unitPrice;
-    final tax = double.tryParse(_tempTaxController.text) ?? _tempSelectedProduct!.taxRate;
+    final price =
+        double.tryParse(_tempPriceController.text) ??
+        _tempSelectedProduct!.unitPrice;
+    final tax =
+        double.tryParse(_tempTaxController.text) ??
+        _tempSelectedProduct!.taxRate;
 
     if (qty <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,14 +130,20 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
   }
 
   // Aggregate Calculations
-  double get _subTotal => _items.fold(0.0, (sum, item) => sum + item.lineSubtotal);
+  double get _subTotal =>
+      _items.fold(0.0, (sum, item) => sum + item.lineSubtotal);
   double get _taxTotal => _items.fold(0.0, (sum, item) => sum + item.lineTax);
-  double get _grandTotal => _items.fold(0.0, (sum, item) => sum + item.lineTotal);
+  double get _grandTotal =>
+      _items.fold(0.0, (sum, item) => sum + item.lineTotal);
 
   void _saveInvoice() async {
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Validation Error: Invoice must contain at least 1 item.')),
+        const SnackBar(
+          content: Text(
+            'Validation Error: Invoice must contain at least 1 item.',
+          ),
+        ),
       );
       return;
     }
@@ -172,17 +184,20 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
 
     if (mounted) {
       // Pass back updated item
-      Navigator.pop(context, widget.invoice?.copyWith(
-        clientId: _selectedClientId!,
-        issueDate: _issueDate,
-        dueDate: _dueDate,
-        status: _status,
-        notes: _notes,
-        items: _items,
-        subTotal: _subTotal,
-        taxTotal: _taxTotal,
-        grandTotal: _grandTotal,
-      ));
+      Navigator.pop(
+        context,
+        widget.invoice?.copyWith(
+          clientId: _selectedClientId!,
+          issueDate: _issueDate,
+          dueDate: _dueDate,
+          status: _status,
+          notes: _notes,
+          items: _items,
+          subTotal: _subTotal,
+          taxTotal: _taxTotal,
+          grandTotal: _grandTotal,
+        ),
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invoice saved successfully!')),
       );
@@ -197,7 +212,11 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? 'Invoice Wizard: Edit $_invoiceNumber' : 'Invoice Wizard: Create Invoice'),
+        title: Text(
+          isEdit
+              ? 'Invoice Wizard: Edit $_invoiceNumber'
+              : 'Invoice Wizard: Create Invoice',
+        ),
       ),
       body: Stepper(
         type: StepperType.horizontal,
@@ -210,7 +229,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
           } else if (_currentStep == 1) {
             if (_items.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please add at least one item to proceed.')),
+                const SnackBar(
+                  content: Text('Please add at least one item to proceed.'),
+                ),
               );
             } else {
               setState(() => _currentStep++);
@@ -290,7 +311,11 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
         children: [
           const Text(
             'General Information',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.indigo,
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -376,7 +401,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     child: Text(
                       DateFormat('yyyy-MM-dd').format(_dueDate),
                       style: TextStyle(
-                        color: _dueDate.isBefore(DateTime.now()) && _status != InvoiceStatus.paid
+                        color:
+                            _dueDate.isBefore(DateTime.now()) &&
+                                _status != InvoiceStatus.paid
                             ? Colors.red
                             : null,
                       ),
@@ -395,7 +422,8 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
               labelText: 'Terms / Payment Notes (Optional)',
               prefixIcon: Icon(Icons.note_alt_outlined),
               border: OutlineInputBorder(),
-              hintText: 'e.g. Please send payment within 30 days via direct bank transfer.',
+              hintText:
+                  'e.g. Please send payment within 30 days via direct bank transfer.',
             ),
             maxLines: 3,
             onChanged: (val) {
@@ -409,14 +437,21 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
 
   // Step 2: Line Items builder
   Widget _buildStep2LineItems(AppStateProvider state, ThemeData theme) {
-    final formatter = NumberFormat.currency(symbol: state.company.currency, decimalDigits: 2);
+    final formatter = NumberFormat.currency(
+      symbol: state.company.currency,
+      decimalDigits: 2,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Invoice Items Builder',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.indigo,
+          ),
         ),
         const SizedBox(height: 16),
 
@@ -433,7 +468,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Select Product from Inventory Catalog:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const Text(
+                  'Select Product from Inventory Catalog:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<ProductModel>(
                   initialValue: _tempSelectedProduct,
@@ -458,7 +496,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       Expanded(
                         child: TextFormField(
                           controller: _tempPriceController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           decoration: const InputDecoration(
                             labelText: 'Custom Unit Price',
                             border: OutlineInputBorder(),
@@ -470,7 +510,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       Expanded(
                         child: TextFormField(
                           controller: _tempTaxController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           decoration: const InputDecoration(
                             labelText: 'Custom Tax (%)',
                             border: OutlineInputBorder(),
@@ -498,7 +540,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       onPressed: _addTempItem,
                       icon: const Icon(Icons.add_shopping_cart),
                       label: const Text('Add Line Item'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -509,7 +554,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
         const SizedBox(height: 24),
 
         // Added Items List Table
-        const Text('Added Items:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const Text(
+          'Added Items:',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
         const SizedBox(height: 8),
         if (_items.isEmpty)
           Container(
@@ -533,7 +581,13 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  title: Text(line.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  title: Text(
+                    line.productName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
                   subtitle: Text(
                     'Qty: ${line.quantity} × ${formatter.format(line.unitPrice)} | Tax: ${line.taxRate.toStringAsFixed(0)}%',
                     style: const TextStyle(fontSize: 12),
@@ -543,10 +597,16 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     children: [
                       Text(
                         formatter.format(line.lineTotal),
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo,
+                        ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
                         onPressed: () => _removeItem(idx),
                       ),
                     ],
@@ -555,7 +615,7 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
               );
             },
           ),
-        
+
         // Calculated real-time aggregates
         const SizedBox(height: 20),
         const Divider(),
@@ -582,8 +642,18 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Grand Total:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  Text(formatter.format(_grandTotal), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.indigo)),
+                  const Text(
+                    'Grand Total:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  Text(
+                    formatter.format(_grandTotal),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.indigo,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -595,10 +665,20 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
 
   // Step 3: Final Review and Status
   Widget _buildStep3Review(AppStateProvider state, ThemeData theme) {
-    final formatter = NumberFormat.currency(symbol: state.company.currency, decimalDigits: 2);
+    final formatter = NumberFormat.currency(
+      symbol: state.company.currency,
+      decimalDigits: 2,
+    );
     final client = state.clients.firstWhere(
       (c) => c.id == _selectedClientId,
-      orElse: () => ClientModel(id: '', name: 'No client selected', email: '', phone: '', billingAddress: '', shippingAddress: ''),
+      orElse: () => ClientModel(
+        id: '',
+        name: 'No client selected',
+        email: '',
+        phone: '',
+        billingAddress: '',
+        shippingAddress: '',
+      ),
     );
 
     return Column(
@@ -606,7 +686,11 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
       children: [
         const Text(
           'Invoice Final Summary Review',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.indigo,
+          ),
         ),
         const SizedBox(height: 16),
 
@@ -621,7 +705,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Invoice Number:'),
-                    Text(_invoiceNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      _invoiceNumber,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -629,7 +716,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Bill To Customer:'),
-                    Text(client.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      client.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -670,8 +760,21 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Balance Due:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
-                    Text(formatter.format(_grandTotal), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo, fontSize: 16)),
+                    const Text(
+                      'Balance Due:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo,
+                      ),
+                    ),
+                    Text(
+                      formatter.format(_grandTotal),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo,
+                        fontSize: 16,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -681,7 +784,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
         const SizedBox(height: 24),
 
         // Status Selection
-        const Text('Select Initial Status:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text(
+          'Select Initial Status:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         DropdownButtonFormField<InvoiceStatus>(
           initialValue: _status,
@@ -690,11 +796,26 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
             prefixIcon: Icon(Icons.stars),
           ),
           items: const [
-            DropdownMenuItem(value: InvoiceStatus.draft, child: Text('Draft (Saved locally for edits)')),
-            DropdownMenuItem(value: InvoiceStatus.sent, child: Text('Sent (Awaiting payment)')),
-            DropdownMenuItem(value: InvoiceStatus.paid, child: Text('Paid (Complete)')),
-            DropdownMenuItem(value: InvoiceStatus.partiallyPaid, child: Text('Partially Paid')),
-            DropdownMenuItem(value: InvoiceStatus.overdue, child: Text('Overdue (Past term)')),
+            DropdownMenuItem(
+              value: InvoiceStatus.draft,
+              child: Text('Draft (Saved locally for edits)'),
+            ),
+            DropdownMenuItem(
+              value: InvoiceStatus.sent,
+              child: Text('Sent (Awaiting payment)'),
+            ),
+            DropdownMenuItem(
+              value: InvoiceStatus.paid,
+              child: Text('Paid (Complete)'),
+            ),
+            DropdownMenuItem(
+              value: InvoiceStatus.partiallyPaid,
+              child: Text('Partially Paid'),
+            ),
+            DropdownMenuItem(
+              value: InvoiceStatus.overdue,
+              child: Text('Overdue (Past term)'),
+            ),
           ],
           onChanged: (val) {
             if (val != null) {

@@ -47,12 +47,16 @@ class _ShellNavigationState extends State<ShellNavigation> {
           children: [
             const Icon(Icons.receipt_long, color: Colors.indigo, size: 28),
             const SizedBox(width: 8),
-            Text(
-              'INVOICEY',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: theme.colorScheme.onSurface,
+            Flexible(
+              child: Text(
+                'INVOICEY',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
             ),
           ],
@@ -64,7 +68,9 @@ class _ShellNavigationState extends State<ShellNavigation> {
           // Theme Switcher
           IconButton(
             icon: Icon(
-              state.themeMode == ThemeMode.light ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+              state.themeMode == ThemeMode.light
+                  ? Icons.dark_mode_outlined
+                  : Icons.light_mode_outlined,
             ),
             onPressed: state.toggleTheme,
             tooltip: 'Toggle Theme',
@@ -103,11 +109,31 @@ class _ShellNavigationState extends State<ShellNavigation> {
               selectedItemColor: Colors.indigo,
               unselectedItemColor: Colors.grey,
               items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-                BottomNavigationBarItem(icon: Icon(Icons.description_outlined), activeIcon: Icon(Icons.description), label: 'Invoices'),
-                BottomNavigationBarItem(icon: Icon(Icons.people_outline), activeIcon: Icon(Icons.people), label: 'Clients'),
-                BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), activeIcon: Icon(Icons.inventory_2), label: 'Inventory'),
-                BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), activeIcon: Icon(Icons.settings), label: 'Settings'),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.dashboard_outlined),
+                  activeIcon: Icon(Icons.dashboard),
+                  label: 'Dashboard',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.description_outlined),
+                  activeIcon: Icon(Icons.description),
+                  label: 'Invoices',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.people_outline),
+                  activeIcon: Icon(Icons.people),
+                  label: 'Clients',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  activeIcon: Icon(Icons.inventory_2),
+                  label: 'Inventory',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings_outlined),
+                  activeIcon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
               ],
             )
           : null,
@@ -175,7 +201,10 @@ class _ShellNavigationState extends State<ShellNavigation> {
               backgroundColor: Colors.indigo.shade100,
               child: Text(
                 state.currentUser?.name[0].toUpperCase() ?? 'U',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.indigo,
+                ),
               ),
             ),
             title: Text(
@@ -193,10 +222,25 @@ class _ShellNavigationState extends State<ShellNavigation> {
           ),
           const Divider(),
           const SizedBox(height: 8),
-          _sidebarItem(0, Icons.dashboard_outlined, Icons.dashboard, 'Dashboard'),
-          _sidebarItem(1, Icons.description_outlined, Icons.description, 'Invoices'),
+          _sidebarItem(
+            0,
+            Icons.dashboard_outlined,
+            Icons.dashboard,
+            'Dashboard',
+          ),
+          _sidebarItem(
+            1,
+            Icons.description_outlined,
+            Icons.description,
+            'Invoices',
+          ),
           _sidebarItem(2, Icons.people_outline, Icons.people, 'Clients'),
-          _sidebarItem(3, Icons.inventory_2_outlined, Icons.inventory_2, 'Inventory'),
+          _sidebarItem(
+            3,
+            Icons.inventory_2_outlined,
+            Icons.inventory_2,
+            'Inventory',
+          ),
           _sidebarItem(4, Icons.settings_outlined, Icons.settings, 'Settings'),
           const Spacer(),
           // Powered by branding
@@ -215,7 +259,12 @@ class _ShellNavigationState extends State<ShellNavigation> {
     );
   }
 
-  Widget _sidebarItem(int index, IconData unselectedIcon, IconData selectedIcon, String title) {
+  Widget _sidebarItem(
+    int index,
+    IconData unselectedIcon,
+    IconData selectedIcon,
+    String title,
+  ) {
     final isSelected = _currentIndex == index;
     final theme = Theme.of(context);
 
@@ -231,14 +280,18 @@ class _ShellNavigationState extends State<ShellNavigation> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.indigo.withValues(alpha: 0.1) : Colors.transparent,
+            color: isSelected
+                ? Colors.indigo.withValues(alpha: 0.1)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
               Icon(
                 isSelected ? selectedIcon : unselectedIcon,
-                color: isSelected ? Colors.indigo : theme.iconTheme.color?.withValues(alpha: 0.7),
+                color: isSelected
+                    ? Colors.indigo
+                    : theme.iconTheme.color?.withValues(alpha: 0.7),
                 size: 22,
               ),
               const SizedBox(width: 16),
@@ -246,7 +299,11 @@ class _ShellNavigationState extends State<ShellNavigation> {
                 title,
                 style: TextStyle(
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? Colors.indigo : theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.8),
+                  color: isSelected
+                      ? Colors.indigo
+                      : theme.textTheme.bodyLarge?.color?.withValues(
+                          alpha: 0.8,
+                        ),
                 ),
               ),
             ],

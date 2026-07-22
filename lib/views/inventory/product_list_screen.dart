@@ -11,7 +11,8 @@ class ProductListScreen extends StatefulWidget {
   State<ProductListScreen> createState() => _ProductListScreenState();
 }
 
-class _ProductListScreenState extends State<ProductListScreen> with SingleTickerProviderStateMixin {
+class _ProductListScreenState extends State<ProductListScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _searchController = TextEditingController();
   String _searchQuery = '';
@@ -34,7 +35,9 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
     if (!state.canWrite) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Access Denied: Viewers cannot manage the product catalog.'),
+          content: Text(
+            'Access Denied: Viewers cannot manage the product catalog.',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -63,7 +66,9 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Product?'),
-        content: Text('Are you sure you want to delete product "${product.name}"? This action cannot be undone.'),
+        content: Text(
+          'Are you sure you want to delete product "${product.name}"? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -82,7 +87,9 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
       await state.deleteProduct(product.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Deleted product "${product.name}" successfully.')),
+          SnackBar(
+            content: Text('Deleted product "${product.name}" successfully.'),
+          ),
         );
       }
     }
@@ -98,9 +105,12 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
     // Filter items
     List<ProductModel> filterProductsByCategory(String? category) {
       return state.products.where((p) {
-        final matchesCategory = category == null || p.category.toLowerCase() == category.toLowerCase();
+        final matchesCategory =
+            category == null ||
+            p.category.toLowerCase() == category.toLowerCase();
         final q = _searchQuery.toLowerCase();
-        final matchesSearch = p.name.toLowerCase().contains(q) ||
+        final matchesSearch =
+            p.name.toLowerCase().contains(q) ||
             p.sku.toLowerCase().contains(q) ||
             p.description.toLowerCase().contains(q);
         return matchesCategory && matchesSearch;
@@ -114,34 +124,62 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 650;
+                final heading = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Inventory Catalog',
-                      style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
-                      'Configure products, standard market rates, custom SKUs, and categories.',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+                      'Configure products, standard rates, automatic SKUs, and categories.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.hintColor,
+                      ),
                     ),
                   ],
-                ),
-                if (state.canWrite)
-                  ElevatedButton.icon(
-                    onPressed: () => _openProductForm(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Product'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                );
+                final addButton = ElevatedButton.icon(
+                  onPressed: () => _openProductForm(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Product'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
                     ),
                   ),
-              ],
+                );
+
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      heading,
+                      if (state.canWrite) ...[
+                        const SizedBox(height: 16),
+                        addButton,
+                      ],
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: heading),
+                    if (state.canWrite) ...[
+                      const SizedBox(width: 20),
+                      addButton,
+                    ],
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 24),
 
@@ -169,7 +207,9 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
             // Search input field
             Card(
               elevation: 1,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12.0),
                 child: TextField(
@@ -205,9 +245,24 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildProductGrid(filterProductsByCategory(null), formatter, theme, state),
-                  _buildProductGrid(filterProductsByCategory('Solar'), formatter, theme, state),
-                  _buildProductGrid(filterProductsByCategory('IT'), formatter, theme, state),
+                  _buildProductGrid(
+                    filterProductsByCategory(null),
+                    formatter,
+                    theme,
+                    state,
+                  ),
+                  _buildProductGrid(
+                    filterProductsByCategory('Solar'),
+                    formatter,
+                    theme,
+                    state,
+                  ),
+                  _buildProductGrid(
+                    filterProductsByCategory('IT'),
+                    formatter,
+                    theme,
+                    state,
+                  ),
                 ],
               ),
             ),
@@ -228,11 +283,19 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_2_outlined, size: 64, color: theme.hintColor.withValues(alpha: 0.5)),
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 64,
+              color: theme.hintColor.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 16),
             Text(
               'No Products Found',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.hintColor),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: theme.hintColor,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -246,126 +309,171 @@ class _ProductListScreenState extends State<ProductListScreen> with SingleTicker
       );
     }
 
-    return LayoutBuilder(builder: (context, constraints) {
-      // Choose grid layout columns based on width
-      final crossCount = constraints.maxWidth > 1200 ? 3 : (constraints.maxWidth > 700 ? 2 : 1);
-      return GridView.builder(
-        itemCount: products.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossCount,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 2.1,
-        ),
-        itemBuilder: (context, index) {
-          final prod = products[index];
-          return Card(
-            elevation: 1.5,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // SKU and Category badge row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.indigo.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          prod.sku,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.indigo,
-                            fontFamily: 'monospace',
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Choose grid layout columns based on width
+        final crossCount = constraints.maxWidth > 1200
+            ? 3
+            : (constraints.maxWidth > 700 ? 2 : 1);
+        final cardAspectRatio = crossCount == 1
+            ? 1.45
+            : (crossCount == 2 ? 1.75 : 2.1);
+        return GridView.builder(
+          itemCount: products.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossCount,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: cardAspectRatio,
+          ),
+          itemBuilder: (context, index) {
+            final prod = products[index];
+            return Card(
+              elevation: 1.5,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // SKU and Category badge row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.indigo.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              prod.sku,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.indigo,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      _buildCategoryBadge(prod.category),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  // Name and description
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          prod.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          prod.description.isNotEmpty ? prod.description : 'No description provided.',
-                          style: TextStyle(fontSize: 12, color: theme.hintColor),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        const SizedBox(width: 8),
+                        Flexible(child: _buildCategoryBadge(prod.category)),
                       ],
                     ),
-                  ),
-                  const Divider(),
-                  // Price, Tax, Edit actions row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
+                    const SizedBox(height: 10),
+                    // Name and description
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            formatter.format(prod.unitPrice),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.indigo),
-                          ),
-                          Text(
-                            'Tax: ${prod.taxRate.toStringAsFixed(0)}%',
-                            style: TextStyle(fontSize: 11, color: theme.hintColor),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, color: Colors.indigo, size: 20),
-                            onPressed: () => _openProductForm(prod),
-                            tooltip: 'Edit Details',
-                          ),
-                          if (state.canWrite)
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                              onPressed: () => _deleteProduct(prod),
-                              tooltip: 'Delete Product',
+                            prod.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            prod.description.isNotEmpty
+                                ? prod.description
+                                : 'No description provided.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.hintColor,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const Divider(),
+                    // Price, Tax, Edit actions row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              formatter.format(prod.unitPrice),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.indigo,
+                              ),
+                            ),
+                            Text(
+                              'Tax: ${prod.taxRate.toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.hintColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.edit_outlined,
+                                color: Colors.indigo,
+                                size: 20,
+                              ),
+                              onPressed: () => _openProductForm(prod),
+                              tooltip: 'Edit Details',
+                            ),
+                            if (state.canWrite)
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                                onPressed: () => _deleteProduct(prod),
+                                tooltip: 'Delete Product',
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      );
-    });
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildCategoryBadge(String cat) {
     final isSolar = cat.toLowerCase() == 'solar';
+    final isIt = cat.toLowerCase() == 'it';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isSolar ? Colors.amber.withValues(alpha: 0.12) : Colors.purple.withValues(alpha: 0.1),
+        color: isSolar
+            ? Colors.amber.withValues(alpha: 0.12)
+            : Colors.purple.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        isSolar ? 'Solar System' : 'IT Hardware',
+        isSolar ? 'Solar System' : (isIt ? 'IT Hardware' : cat),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: isSolar ? Colors.amber.shade900 : Colors.purple.shade900,
           fontWeight: FontWeight.bold,
@@ -392,7 +500,9 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
   late TextEditingController _descController;
   late TextEditingController _priceController;
   late TextEditingController _taxController;
+  late TextEditingController _newCategoryController;
   late String _category;
+  bool _addingCategory = false;
 
   @override
   void initState() {
@@ -401,9 +511,15 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     _nameController = TextEditingController(text: p?.name ?? '');
     _skuController = TextEditingController(text: p?.sku ?? '');
     _descController = TextEditingController(text: p?.description ?? '');
-    _priceController = TextEditingController(text: p?.unitPrice.toString() ?? '');
-    _taxController = TextEditingController(text: p?.taxRate.toString() ?? '15.0');
+    _priceController = TextEditingController(
+      text: p?.unitPrice.toString() ?? '',
+    );
+    _taxController = TextEditingController(
+      text: p?.taxRate.toString() ?? '15.0',
+    );
+    _newCategoryController = TextEditingController();
     _category = p?.category ?? 'Solar';
+    _nameController.addListener(_refreshGeneratedSku);
   }
 
   @override
@@ -413,7 +529,39 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     _descController.dispose();
     _priceController.dispose();
     _taxController.dispose();
+    _newCategoryController.dispose();
     super.dispose();
+  }
+
+  void _refreshGeneratedSku() {
+    if (!mounted ||
+        widget.product != null &&
+            _nameController.text == widget.product!.name &&
+            _category == widget.product!.category) {
+      return;
+    }
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      _skuController.clear();
+      return;
+    }
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    _skuController.text = state.generateProductSku(
+      name: name,
+      category: _category,
+      excludeProductId: widget.product?.id,
+    );
+  }
+
+  void _addCategory() {
+    final category = _newCategoryController.text.trim();
+    if (category.isEmpty) return;
+    setState(() {
+      _category = category;
+      _addingCategory = false;
+      _newCategoryController.clear();
+    });
+    _refreshGeneratedSku();
   }
 
   void _save() async {
@@ -451,7 +599,9 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            widget.product == null ? 'Product added successfully!' : 'Product updated successfully!',
+            widget.product == null
+                ? 'Product added successfully!'
+                : 'Product updated successfully!',
           ),
         ),
       );
@@ -461,6 +611,16 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.product != null;
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    final categories =
+        <String>{
+            'Solar',
+            'Hardware',
+            'IT',
+            ...state.products.map((product) => product.category.trim()),
+            if (_category.isNotEmpty) _category,
+          }.where((category) => category.isNotEmpty).toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     return AlertDialog(
       title: Text(isEdit ? 'Edit Catalog Product' : 'Add New Catalog Product'),
@@ -480,18 +640,28 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                     prefixIcon: Icon(Icons.shopping_bag_outlined),
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Product name is required' : null,
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? 'Product name is required'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _skuController,
-                  decoration: const InputDecoration(
-                    labelText: 'Unique SKU Code *',
-                    prefixIcon: Icon(Icons.qr_code_scanner_outlined),
-                    border: OutlineInputBorder(),
-                    helperText: 'Example: SOL-PAN-550W or IT-SRV-2U',
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: 'Auto-generated SKU',
+                    prefixIcon: const Icon(Icons.qr_code_scanner_outlined),
+                    border: const OutlineInputBorder(),
+                    helperText: 'Generated from category and product name',
+                    suffixIcon: IconButton(
+                      tooltip: 'Generate SKU again',
+                      onPressed: _refreshGeneratedSku,
+                      icon: const Icon(Icons.refresh),
+                    ),
                   ),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'SKU Code is required' : null,
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? 'SKU Code is required'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -501,55 +671,116 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                     prefixIcon: Icon(Icons.category_outlined),
                     border: OutlineInputBorder(),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'Solar', child: Text('Solar System Equipment')),
-                    DropdownMenuItem(value: 'IT', child: Text('IT Hardware Equipment')),
+                  items: [
+                    ...categories.map(
+                      (category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(category),
+                      ),
+                    ),
+                    const DropdownMenuItem(
+                      value: '__add_category__',
+                      child: Row(
+                        children: [
+                          Icon(Icons.add, size: 18),
+                          SizedBox(width: 8),
+                          Text('Add new category'),
+                        ],
+                      ),
+                    ),
                   ],
                   onChanged: (val) {
-                    if (val != null) {
+                    if (val == '__add_category__') {
+                      setState(() => _addingCategory = true);
+                    } else if (val != null) {
                       setState(() {
                         _category = val;
+                        _addingCategory = false;
                       });
+                      _refreshGeneratedSku();
                     }
                   },
                 ),
+                if (_addingCategory) ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _newCategoryController,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: 'New category name',
+                      hintText: 'Example: Hardware',
+                      prefixIcon: const Icon(Icons.create_new_folder_outlined),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        tooltip: 'Add category',
+                        onPressed: _addCategory,
+                        icon: const Icon(Icons.check),
+                      ),
+                    ),
+                    onFieldSubmitted: (_) => _addCategory(),
+                  ),
+                ],
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _priceController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Unit Price *',
-                          prefixIcon: Icon(Icons.attach_money),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Price is required';
-                          if (double.tryParse(v) == null) return 'Enter a number';
-                          return null;
-                        },
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final priceField = TextFormField(
+                      controller: _priceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _taxController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Standard Tax Rate (%)',
-                          prefixIcon: Icon(Icons.percent),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Tax rate is required';
-                          if (double.tryParse(v) == null) return 'Enter a number';
-                          return null;
-                        },
+                      decoration: const InputDecoration(
+                        labelText: 'Unit Price *',
+                        prefixIcon: Icon(Icons.attach_money),
+                        border: OutlineInputBorder(),
                       ),
-                    ),
-                  ],
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Price is required';
+                        }
+                        if (double.tryParse(v) == null) {
+                          return 'Enter a number';
+                        }
+                        return null;
+                      },
+                    );
+                    final taxField = TextFormField(
+                      controller: _taxController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Standard Tax Rate (%)',
+                        prefixIcon: Icon(Icons.percent),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Tax rate is required';
+                        }
+                        if (double.tryParse(v) == null) {
+                          return 'Enter a number';
+                        }
+                        return null;
+                      },
+                    );
+                    if (constraints.maxWidth < 420) {
+                      return Column(
+                        children: [
+                          priceField,
+                          const SizedBox(height: 16),
+                          taxField,
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: priceField),
+                        const SizedBox(width: 16),
+                        Expanded(child: taxField),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -573,7 +804,10 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
         ),
         ElevatedButton(
           onPressed: _save,
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.indigo,
+            foregroundColor: Colors.white,
+          ),
           child: Text(isEdit ? 'Save Changes' : 'Add to Catalog'),
         ),
       ],

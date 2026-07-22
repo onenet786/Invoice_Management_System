@@ -1,12 +1,6 @@
 import 'invoice_item_model.dart';
 
-enum InvoiceStatus {
-  draft,
-  sent,
-  paid,
-  overdue,
-  partiallyPaid,
-}
+enum InvoiceStatus { draft, sent, paid, overdue, partiallyPaid }
 
 class InvoiceModel {
   final String id;
@@ -53,8 +47,9 @@ class InvoiceModel {
 
   factory InvoiceModel.fromJson(Map<String, dynamic> json) {
     var list = json['items'] as List? ?? [];
-    List<InvoiceItemModel> parsedItems =
-        list.map((e) => InvoiceItemModel.fromJson(e as Map<String, dynamic>)).toList();
+    List<InvoiceItemModel> parsedItems = list
+        .map((e) => InvoiceItemModel.fromJson(e as Map<String, dynamic>))
+        .toList();
 
     return InvoiceModel(
       id: json['id'] as String,

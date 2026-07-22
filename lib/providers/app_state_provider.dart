@@ -11,6 +11,7 @@ class AppStateProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+  bool get isSetupComplete => _storage.isSetupComplete;
 
   UserModel? _currentUser;
   UserModel? get currentUser => _currentUser;
@@ -30,8 +31,20 @@ class AppStateProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   ThemeMode get themeMode => _themeMode;
 
+  bool _biometricEnabled = false;
+  bool get biometricEnabled => _biometricEnabled;
+
+  String _pdfTemplate = 'Classic';
+  String get pdfTemplate => _pdfTemplate;
+
   AppStateProvider(this._storage)
-      : _company = CompanyModel(name: 'My Solar & IT Corp', logo: '', taxId: '', address: '', currency: '\$') {
+    : _company = CompanyModel(
+        name: 'My Solar & IT Corp',
+        logo: '',
+        taxId: '',
+        address: '',
+        currency: '\$',
+      ) {
     _loadAllData();
   }
 
@@ -44,6 +57,8 @@ class AppStateProvider extends ChangeNotifier {
     _clients = await _storage.getClients();
     _products = await _storage.getProducts();
     _invoices = await _storage.getInvoices();
+    _biometricEnabled = _storage.biometricEnabled;
+    _pdfTemplate = _storage.pdfTemplate;
 
     // Check overdue invoices dynamically on load
     await _checkOverdueInvoices();
@@ -52,12 +67,50 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> useSampleCompany() async {
+    _isLoading = true;
+    notifyListeners();
+    await _storage.seedSampleCompany();
+    await _loadAllData();
+  }
+
+  Future<void> setupCompany({
+    required String companyName,
+    required String taxId,
+    required String address,
+    required String currency,
+    required String adminName,
+    required String email,
+    required String password,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    await _storage.setupCompany(
+      company: CompanyModel(
+        name: companyName.trim(),
+        logo: '',
+        taxId: taxId.trim(),
+        address: address.trim(),
+        currency: currency,
+      ),
+      administrator: UserModel(
+        id: 'u-admin-${DateTime.now().millisecondsSinceEpoch}',
+        name: adminName.trim(),
+        email: email.trim().toLowerCase(),
+        password: password,
+        role: UserRole.admin,
+      ),
+    );
+    await _loadAllData();
+  }
+
   Future<void> _checkOverdueInvoices() async {
     bool updated = false;
     final now = DateTime.now();
     for (int i = 0; i < _invoices.length; i++) {
       final inv = _invoices[i];
-      if (inv.status == InvoiceStatus.sent || inv.status == InvoiceStatus.partiallyPaid) {
+      if (inv.status == InvoiceStatus.sent ||
+          inv.status == InvoiceStatus.partiallyPaid) {
         if (inv.dueDate.isBefore(now)) {
           _invoices[i] = inv.copyWith(status: InvoiceStatus.overdue);
           updated = true;
@@ -78,8 +131,16 @@ class AppStateProvider extends ChangeNotifier {
     await Future.delayed(const Duration(milliseconds: 600));
 
     final match = _users.firstWhere(
-      (u) => u.email.toLowerCase().trim() == email.toLowerCase().trim() && u.password == password,
-      orElse: () => UserModel(id: '', name: '', email: '', password: '', role: UserRole.viewer),
+      (u) =>
+          u.email.toLowerCase().trim() == email.toLowerCase().trim() &&
+          u.password == password,
+      orElse: () => UserModel(
+        id: '',
+        name: '',
+        email: '',
+        password: '',
+        role: UserRole.viewer,
+      ),
     );
 
     _isLoading = false;
@@ -100,7 +161,8 @@ class AppStateProvider extends ChangeNotifier {
   // Role verification helper
   bool get canWrite {
     if (_currentUser == null) return false;
-    return _currentUser!.role == UserRole.admin || _currentUser!.role == UserRole.manager;
+    return _currentUser!.role == UserRole.admin ||
+        _currentUser!.role == UserRole.manager;
   }
 
   bool get isAdmin {
@@ -124,7 +186,21 @@ class AppStateProvider extends ChangeNotifier {
 
   // Theme Management
   void toggleTheme() {
-    _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _themeMode = _themeMode == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
+    notifyListeners();
+  }
+
+  Future<void> setBiometricEnabled(bool enabled) async {
+    _biometricEnabled = enabled;
+    await _storage.saveBiometricEnabled(enabled);
+    notifyListeners();
+  }
+
+  Future<void> setPdfTemplate(String template) async {
+    _pdfTemplate = template;
+    await _storage.savePdfTemplate(template);
     notifyListeners();
   }
 
@@ -186,6 +262,47 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  String generateProductSku({
+    required String name,
+    required String category,
+    String? excludeProductId,
+  }) {
+    String code(String value, {required int maxLength}) {
+      final cleaned = value.toUpperCase().replaceAll(
+        RegExp(r'[^A-Z0-9 ]'),
+        ' ',
+      );
+      final parts = cleaned
+          .split(RegExp(r'\s+'))
+          .where((part) => part.isNotEmpty)
+          .toList();
+      if (parts.isEmpty) return 'GEN';
+      final combined = parts.length == 1
+          ? parts.first
+          : parts
+                .take(3)
+                .map((part) => part.substring(0, part.length.clamp(1, 3)))
+                .join();
+      return combined.substring(0, combined.length.clamp(1, maxLength));
+    }
+
+    final categoryCode = code(category, maxLength: 3).padRight(3, 'X');
+    final productCode = code(name, maxLength: 8).padRight(3, 'X');
+    final usedSkus = _products
+        .where((product) => product.id != excludeProductId)
+        .map((product) => product.sku.toUpperCase())
+        .toSet();
+
+    var sequence = 1;
+    String candidate;
+    do {
+      candidate =
+          '$categoryCode-$productCode-${sequence.toString().padLeft(3, '0')}';
+      sequence++;
+    } while (usedSkus.contains(candidate));
+    return candidate;
+  }
+
   // Invoices CRUD
   Future<void> addInvoice(InvoiceModel invoice) async {
     if (!canWrite) return;
@@ -239,16 +356,28 @@ class AppStateProvider extends ChangeNotifier {
       .fold(0.0, (sum, inv) => sum + inv.grandTotal);
 
   double get pendingPayments => _invoices
-      .where((inv) => inv.status == InvoiceStatus.sent || inv.status == InvoiceStatus.partiallyPaid)
+      .where(
+        (inv) =>
+            inv.status == InvoiceStatus.sent ||
+            inv.status == InvoiceStatus.partiallyPaid,
+      )
       .fold(0.0, (sum, inv) => sum + inv.grandTotal);
 
   double get overdueAmount => _invoices
       .where((inv) => inv.status == InvoiceStatus.overdue)
       .fold(0.0, (sum, inv) => sum + inv.grandTotal);
 
-  int get paidCount => _invoices.where((inv) => inv.status == InvoiceStatus.paid).length;
-  int get pendingCount => _invoices.where((inv) => inv.status == InvoiceStatus.sent || inv.status == InvoiceStatus.partiallyPaid).length;
-  int get overdueCount => _invoices.where((inv) => inv.status == InvoiceStatus.overdue).length;
+  int get paidCount =>
+      _invoices.where((inv) => inv.status == InvoiceStatus.paid).length;
+  int get pendingCount => _invoices
+      .where(
+        (inv) =>
+            inv.status == InvoiceStatus.sent ||
+            inv.status == InvoiceStatus.partiallyPaid,
+      )
+      .length;
+  int get overdueCount =>
+      _invoices.where((inv) => inv.status == InvoiceStatus.overdue).length;
 
   // Monthly Sales calculation for Chart
   // Returns map of month indices (1..12) to sum of sales

@@ -27,14 +27,13 @@ class InvoicePdfPreviewScreen extends StatelessWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('PDF Preview - ${invoice.invoiceNumber}'),
-      ),
+      appBar: AppBar(title: Text('PDF Preview - ${invoice.invoiceNumber}')),
       body: PdfPreview(
         build: (format) => PdfService.generateInvoicePdf(
           invoice: invoice,
           client: client,
           company: state.company,
+          template: state.pdfTemplate,
         ),
         canDebug: false,
         actions: const [],

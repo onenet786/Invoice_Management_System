@@ -1,5 +1,3 @@
-
-
 class ScannedQuoteTemplate {
   final String title;
   final String clientName;
@@ -37,7 +35,8 @@ class OcrScanService {
     ScannedQuoteTemplate(
       title: 'Solar System Layout Quote (EcoPower)',
       clientName: 'EcoPower Solutions Inc.',
-      handwrittenText: 'QUOTE FOR: EcoPower Solutions Inc.\n'
+      handwrittenText:
+          'QUOTE FOR: EcoPower Solutions Inc.\n'
           'Project: Site A Solar Farm Setup\n\n'
           '- 12x Tier-1 Monocrystalline Solar Panel (550W) @ \$240.00 each\n'
           '- 2x Hybrid Solar Inverter (10kW, Three-Phase) @ \$1,300.00 each\n'
@@ -77,7 +76,8 @@ class OcrScanService {
     ScannedQuoteTemplate(
       title: 'IT Hardware Upgrade Quote (Apex Data)',
       clientName: 'Apex Data Systems',
-      handwrittenText: 'ESTIMATE FOR CUSTOMER: Apex Data Systems\n'
+      handwrittenText:
+          'ESTIMATE FOR CUSTOMER: Apex Data Systems\n'
           'Upgrade Phase 2 - Office Servers & Infrastructure\n\n'
           '- 2x Enterprise Rack Server (2U, 2x Intel Xeon, 128GB RAM, 2TB NVMe) @ \$4,600.00\n'
           '- 4x Managed L3 Network Switch (48-Port Gigabit, PoE+) @ \$850.00 each\n'
@@ -87,7 +87,8 @@ class OcrScanService {
           'Notes: Net 15 days term check invoice details.',
       items: [
         ScannedLineItem(
-          productName: 'Enterprise Rack Server (2U, 2x Intel Xeon, 128GB RAM, 2TB NVMe)',
+          productName:
+              'Enterprise Rack Server (2U, 2x Intel Xeon, 128GB RAM, 2TB NVMe)',
           sku: 'IT-SRV-2U-XEON',
           quantity: 2,
           unitPrice: 4600.00,
@@ -105,7 +106,8 @@ class OcrScanService {
           unitPrice: 270.00,
         ),
         ScannedLineItem(
-          productName: 'Uninterruptible Power Supply (UPS) (2000VA / 1200W, Rackmount)',
+          productName:
+              'Uninterruptible Power Supply (UPS) (2000VA / 1200W, Rackmount)',
           sku: 'IT-UPS-2KVA',
           quantity: 2,
           unitPrice: 410.00,

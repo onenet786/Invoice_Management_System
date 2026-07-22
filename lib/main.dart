@@ -3,21 +3,20 @@ import 'package:provider/provider.dart';
 import 'services/storage_service.dart';
 import 'providers/app_state_provider.dart';
 import 'views/auth/login_screen.dart';
+import 'views/onboarding/onboarding_screen.dart';
 import 'views/shell_navigation.dart';
 
 void main() async {
   // Ensure Flutter engine bindings are initialized prior to loading storage
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize storage persistence engine
   final storageService = await StorageService.init();
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => AppStateProvider(storageService),
-        ),
+        ChangeNotifierProvider(create: (_) => AppStateProvider(storageService)),
       ],
       child: const MyApp(),
     ),
@@ -69,7 +68,10 @@ class MyApp extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Colors.indigo, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
 
@@ -113,7 +115,10 @@ class MyApp extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.indigo.shade300, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
 
@@ -123,8 +128,9 @@ class MyApp extends StatelessWidget {
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: state.themeMode,
-      initialRoute: '/login',
+      initialRoute: state.isSetupComplete ? '/login' : '/onboarding',
       routes: {
+        '/onboarding': (context) => const OnboardingScreen(),
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const ShellNavigation(),
       },

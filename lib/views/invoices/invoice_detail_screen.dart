@@ -40,9 +40,9 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     });
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invoice marked as Paid.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invoice marked as Paid.')));
     }
   }
 
@@ -50,12 +50,22 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     final state = Provider.of<AppStateProvider>(context, listen: false);
     final client = state.clients.firstWhere(
       (c) => c.id == _currentInvoice.clientId,
-      orElse: () => ClientModel(id: '', name: 'Unknown', email: '', phone: '', billingAddress: '', shippingAddress: ''),
+      orElse: () => ClientModel(
+        id: '',
+        name: 'Unknown',
+        email: '',
+        phone: '',
+        billingAddress: '',
+        shippingAddress: '',
+      ),
     );
 
     if (client.id.isEmpty || client.email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Client email is not configured.'), backgroundColor: Colors.orange),
+        const SnackBar(
+          content: Text('Client email is not configured.'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -84,7 +94,9 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   void _showViewerRestriction() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Access Denied: Viewers cannot perform invoice mutations.'),
+        content: Text(
+          'Access Denied: Viewers cannot perform invoice mutations.',
+        ),
         backgroundColor: Colors.red,
       ),
     );
@@ -120,7 +132,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => InvoicePdfPreviewScreen(invoice: _currentInvoice),
+                  builder: (context) =>
+                      InvoicePdfPreviewScreen(invoice: _currentInvoice),
                 ),
               );
             },
@@ -137,7 +150,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               onPressed: () async {
                 final result = await Navigator.of(context).push<InvoiceModel?>(
                   MaterialPageRoute(
-                    builder: (context) => InvoiceWizardScreen(invoice: _currentInvoice),
+                    builder: (context) =>
+                        InvoiceWizardScreen(invoice: _currentInvoice),
                   ),
                 );
                 if (result != null) {
@@ -172,9 +186,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                           child: _buildDetailsCard(client, state, theme),
                         ),
                         const SizedBox(width: 20),
-                        Expanded(
-                          child: _buildSummaryCard(formatter, theme),
-                        ),
+                        Expanded(child: _buildSummaryCard(formatter, theme)),
                       ],
                     );
                   } else {
@@ -218,7 +230,10 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                 children: [
                   Text(
                     'Invoice is currently: ${_currentInvoice.status.name.toUpperCase()}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
+                    ),
                   ),
                   Text(
                     'Ensure details match client terms before dispatching.',
@@ -243,7 +258,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     );
   }
 
-  Widget _buildDetailsCard(ClientModel client, AppStateProvider state, ThemeData theme) {
+  Widget _buildDetailsCard(
+    ClientModel client,
+    AppStateProvider state,
+    ThemeData theme,
+  ) {
     final comp = state.company;
 
     return Card(
@@ -262,12 +281,28 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('FROM:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: theme.hintColor)),
+                      Text(
+                        'FROM:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: theme.hintColor,
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      Text(comp.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(
+                        comp.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(comp.address, style: const TextStyle(fontSize: 12)),
-                      Text('Tax ID: ${comp.taxId}', style: const TextStyle(fontSize: 12)),
+                      Text(
+                        'Tax ID: ${comp.taxId}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
@@ -275,15 +310,38 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('BILL TO:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: theme.hintColor)),
+                      Text(
+                        'BILL TO:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: theme.hintColor,
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      Text(client.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(
+                        client.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(client.email, style: const TextStyle(fontSize: 12)),
                       Text(client.phone, style: const TextStyle(fontSize: 12)),
                       const SizedBox(height: 4),
-                      Text('Billing Address:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: theme.hintColor)),
-                      Text(client.billingAddress, style: const TextStyle(fontSize: 12)),
+                      Text(
+                        'Billing Address:',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: theme.hintColor,
+                        ),
+                      ),
+                      Text(
+                        client.billingAddress,
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
@@ -299,8 +357,19 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Issue Date:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      Text(_currentInvoice.issueDate.toIso8601String().split('T')[0], style: const TextStyle(fontSize: 14)),
+                      const Text(
+                        'Issue Date:',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        _currentInvoice.issueDate.toIso8601String().split(
+                          'T',
+                        )[0],
+                        style: const TextStyle(fontSize: 14),
+                      ),
                     ],
                   ),
                 ),
@@ -308,13 +377,24 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Due Date:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Due Date:',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       Text(
                         _currentInvoice.dueDate.toIso8601String().split('T')[0],
                         style: TextStyle(
                           fontSize: 14,
-                          color: _currentInvoice.status == InvoiceStatus.overdue ? Colors.red : null,
-                          fontWeight: _currentInvoice.status == InvoiceStatus.overdue ? FontWeight.bold : null,
+                          color: _currentInvoice.status == InvoiceStatus.overdue
+                              ? Colors.red
+                              : null,
+                          fontWeight:
+                              _currentInvoice.status == InvoiceStatus.overdue
+                              ? FontWeight.bold
+                              : null,
                         ),
                       ),
                     ],
@@ -326,9 +406,18 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               const SizedBox(height: 20),
               const Divider(),
               const SizedBox(height: 12),
-              const Text('Terms / Notes:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              const Text(
+                'Terms / Notes:',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 4),
-              Text(_currentInvoice.notes, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+              Text(
+                _currentInvoice.notes,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
             ],
           ],
         ),
@@ -373,11 +462,19 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               children: [
                 const Text(
                   'Grand Total:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.indigo),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.indigo,
+                  ),
                 ),
                 Text(
                   formatter.format(_currentInvoice.grandTotal),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.indigo),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.indigo,
+                  ),
                 ),
               ],
             ),
@@ -413,20 +510,60 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                 TableRow(
                   decoration: BoxDecoration(
                     color: Colors.indigo.withValues(alpha: 0.05),
-                    border: const Border(bottom: BorderSide(color: Colors.grey)),
+                    border: const Border(
+                      bottom: BorderSide(color: Colors.grey),
+                    ),
                   ),
                   children: const [
-                    Padding(padding: EdgeInsets.all(10), child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold))),
-                    Padding(padding: EdgeInsets.all(10), child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                    Padding(padding: EdgeInsets.all(10), child: Text('Rate', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
-                    Padding(padding: EdgeInsets.all(10), child: Text('Tax %', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                    Padding(padding: EdgeInsets.all(10), child: Text('Total', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
+                    Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        'Item Name',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        'Qty',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        'Rate',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        'Tax %',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        'Total',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
                   ],
                 ),
                 ..._currentInvoice.items.map((item) {
                   return TableRow(
                     decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5))),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: theme.dividerColor.withValues(alpha: 0.5),
+                        ),
+                      ),
                     ),
                     children: [
                       Padding(
@@ -434,30 +571,59 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text(
+                              item.productName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(
                               'SKU ID: ${item.productId}',
-                              style: TextStyle(fontSize: 11, color: theme.hintColor, fontFamily: 'monospace'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.hintColor,
+                                fontFamily: 'monospace',
+                              ),
                             ),
                           ],
                         ),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12),
-                        child: Text(item.quantity.toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
+                        child: Text(
+                          item.quantity.toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 13),
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12),
-                        child: Text(formatter.format(item.unitPrice), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13)),
+                        child: Text(
+                          formatter.format(item.unitPrice),
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(fontSize: 13),
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12),
-                        child: Text('${item.taxRate.toStringAsFixed(0)}%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
+                        child: Text(
+                          '${item.taxRate.toStringAsFixed(0)}%',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 13),
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12),
-                        child: Text(formatter.format(item.lineTotal), textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        child: Text(
+                          formatter.format(item.lineTotal),
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ],
                   );
