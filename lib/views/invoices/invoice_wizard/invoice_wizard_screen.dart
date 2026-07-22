@@ -219,7 +219,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
         ),
       ),
       body: Stepper(
-        type: StepperType.horizontal,
+        type: MediaQuery.of(context).size.width > 700
+            ? StepperType.horizontal
+            : StepperType.vertical,
         currentStep: _currentStep,
         onStepContinue: () {
           if (_currentStep == 0) {
@@ -304,24 +306,46 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
 
   // Step 1: Client & Dates Setup
   Widget _buildStep1ClientDetails(AppStateProvider state, ThemeData theme) {
+    final bool hasClients = state.clients.isNotEmpty;
+    final String? validClientId = hasClients && state.clients.any((c) => c.id == _selectedClientId)
+        ? _selectedClientId
+        : null;
+
     return Form(
       key: _step1FormKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'General Information',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'General Information',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.indigo,
+                ),
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.person_add_alt_1, size: 16),
+                label: const Text('Add Client'),
+                onPressed: () => _showQuickAddClientDialog(context, state),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Client Dropdown Selector
           DropdownButtonFormField<String>(
-            initialValue: _selectedClientId,
+            initialValue: validClientId,
+            isExpanded: true,
+            hint: Text(
+              hasClients
+                  ? 'Choose client from directory...'
+                  : 'No clients found. Tap "Add Client" above.',
+              overflow: TextOverflow.ellipsis,
+            ),
             decoration: const InputDecoration(
               labelText: 'Select Client *',
               prefixIcon: Icon(Icons.people_outline),
@@ -330,7 +354,13 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
             items: state.clients.map((client) {
               return DropdownMenuItem<String>(
                 value: client.id,
-                child: Text(client.name),
+                child: Text(
+                  client.email.isNotEmpty
+                      ? '${client.name} (${client.email})'
+                      : client.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               );
             }).toList(),
             onChanged: (val) {
@@ -338,7 +368,7 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 _selectedClientId = val;
               });
             },
-            validator: (v) => v == null ? 'Client selection is required' : null,
+            validator: (v) => v == null || v.isEmpty ? 'Client selection is required' : null,
           ),
           const SizedBox(height: 20),
 
@@ -475,7 +505,8 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<ProductModel>(
                   initialValue: _tempSelectedProduct,
-                  hint: const Text('Choose a pre-seeded product...'),
+                  isExpanded: true,
+                  hint: const Text('Choose a pre-seeded product...', overflow: TextOverflow.ellipsis),
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.search),
                     border: OutlineInputBorder(),
@@ -483,7 +514,7 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   items: state.products.map((p) {
                     return DropdownMenuItem<ProductModel>(
                       value: p,
-                      child: Text('${p.name} (${p.sku})'),
+                      child: Text('${p.name} (${p.sku})', overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                   onChanged: _onProductChanged,
@@ -826,6 +857,92 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
           },
         ),
       ],
+    );
+  }
+
+  void _showQuickAddClientDialog(BuildContext context, AppStateProvider state) {
+    final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final addressCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.person_add, color: Colors.indigo),
+            SizedBox(width: 10),
+            Text('Quick Add Client'),
+          ],
+        ),
+        content: SizedBox(
+          width: 400,
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Client / Company Name *'),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: emailCtrl,
+                  decoration: const InputDecoration(labelText: 'Email Address'),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: phoneCtrl,
+                  decoration: const InputDecoration(labelText: 'Phone Number (WhatsApp)'),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: addressCtrl,
+                  decoration: const InputDecoration(labelText: 'Billing Address'),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigo,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final newClient = ClientModel(
+                id: 'c-${DateTime.now().millisecondsSinceEpoch}',
+                name: nameCtrl.text.trim(),
+                email: emailCtrl.text.trim(),
+                phone: phoneCtrl.text.trim(),
+                billingAddress: addressCtrl.text.trim(),
+                shippingAddress: addressCtrl.text.trim(),
+              );
+
+              await state.addClient(newClient);
+              setState(() {
+                _selectedClientId = newClient.id;
+              });
+
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            },
+            child: const Text('Save Client'),
+          ),
+        ],
+      ),
     );
   }
 }

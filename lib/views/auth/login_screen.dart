@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state_provider.dart';
 
@@ -13,7 +14,52 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final LocalAuthentication _localAuth = LocalAuthentication();
   String? _errorMessage;
+  bool _biometricAuthenticating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = Provider.of<AppStateProvider>(context, listen: false);
+      if (state.biometricEnabled) {
+        _triggerBiometricAuth(state);
+      }
+    });
+  }
+
+  Future<void> _triggerBiometricAuth(AppStateProvider state) async {
+    if (_biometricAuthenticating) return;
+    setState(() => _biometricAuthenticating = true);
+
+    try {
+      final canCheck = await _localAuth.canCheckBiometrics ||
+          await _localAuth.isDeviceSupported();
+      if (!canCheck) return;
+
+      final verified = await _localAuth.authenticate(
+        localizedReason: 'Authenticate to access Invoicey Control Center',
+        biometricOnly: true,
+        persistAcrossBackgrounding: true,
+      );
+
+      if (verified && mounted) {
+        await state.loginWithBiometrics();
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Biometric verification failed: $e';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _biometricAuthenticating = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -43,14 +89,6 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = 'Invalid email or password. Please try again.';
       });
     }
-  }
-
-  void _quickFill(String email, String password) {
-    setState(() {
-      _emailController.text = email;
-      _passwordController.text = password;
-      _errorMessage = null;
-    });
   }
 
   @override
@@ -212,44 +250,40 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                           ),
                         ),
-
-                        const SizedBox(height: 32),
-                        const Divider(),
-                        const SizedBox(height: 16),
-
-                        Text(
-                          'Quick Seed Accounts (Tap to fill):',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: theme.hintColor,
+                        if (state.biometricEnabled) ...[
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: OutlinedButton.icon(
+                              icon: _biometricAuthenticating
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.fingerprint, color: Colors.indigo, size: 24),
+                              label: Text(
+                                _biometricAuthenticating
+                                    ? 'Verifying Biometrics...'
+                                    : 'Sign in with Biometrics (Fingerprint / Face ID)',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.indigo,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.indigo, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              onPressed: _biometricAuthenticating
+                                  ? null
+                                  : () => _triggerBiometricAuth(state),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _buildQuickFillChip(
-                              'Admin',
-                              'admin@invoice.com',
-                              'admin123',
-                              Colors.red.shade400,
-                            ),
-                            _buildQuickFillChip(
-                              'Manager',
-                              'manager@invoice.com',
-                              'manager123',
-                              Colors.amber.shade700,
-                            ),
-                            _buildQuickFillChip(
-                              'Viewer',
-                              'viewer@invoice.com',
-                              'viewer123',
-                              Colors.grey.shade600,
-                            ),
-                          ],
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -259,26 +293,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildQuickFillChip(
-    String label,
-    String email,
-    String password,
-    Color color,
-  ) {
-    return ActionChip(
-      label: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      backgroundColor: color,
-      onPressed: () => _quickFill(email, password),
     );
   }
 }

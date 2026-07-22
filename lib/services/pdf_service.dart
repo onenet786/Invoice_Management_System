@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../models/invoice_model.dart';
+import '../models/invoice_item_model.dart';
 import '../models/client_model.dart';
 import '../models/company_model.dart';
 
@@ -420,6 +421,58 @@ class PdfService {
       case InvoiceStatus.draft:
         return PdfColors.grey700;
     }
+  }
+
+  static Future<Uint8List> generateSampleInvoicePdf({
+    required CompanyModel company,
+    String template = 'Classic',
+  }) async {
+    final sampleClient = ClientModel(
+      id: 'sample-client',
+      name: 'Acme Global Enterprises',
+      email: 'billing@acmeglobal.com',
+      phone: '+1 (555) 019-2831',
+      billingAddress: '100 Innovation Blvd, Suite 300, San Francisco, CA 94107',
+      shippingAddress: '100 Innovation Blvd, Suite 300, San Francisco, CA 94107',
+    );
+
+    final sampleInvoice = InvoiceModel(
+      id: 'sample-inv',
+      invoiceNumber: 'INV-2026-PREVIEW',
+      clientId: 'sample-client',
+      issueDate: DateTime.now(),
+      dueDate: DateTime.now().add(const Duration(days: 30)),
+      status: InvoiceStatus.sent,
+      notes: 'Thank you for your business. Payment due within 30 days.',
+      items: [
+        InvoiceItemModel(
+          id: 'item-1',
+          productId: 'SKU-SOL-550',
+          productName: 'Monocrystalline Solar Panel (550W)',
+          quantity: 4,
+          unitPrice: 249.99,
+          taxRate: 15.0,
+        ),
+        InvoiceItemModel(
+          id: 'item-2',
+          productId: 'SKU-IT-SRV',
+          productName: 'Managed Cloud Infrastructure Setup',
+          quantity: 1,
+          unitPrice: 1200.00,
+          taxRate: 10.0,
+        ),
+      ],
+      subTotal: 2199.96,
+      taxTotal: 270.00,
+      grandTotal: 2469.96,
+    );
+
+    return generateInvoicePdf(
+      invoice: sampleInvoice,
+      client: sampleClient,
+      company: company,
+      template: template,
+    );
   }
 }
 

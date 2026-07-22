@@ -147,162 +147,47 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog>
     final theme = Theme.of(context);
 
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.document_scanner, color: Colors.indigo, size: 28),
-          SizedBox(width: 12),
-          Text('Scan Handwritten Quotation'),
+          const Icon(Icons.document_scanner, color: Colors.indigo, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Scan Handwritten Quotation',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
       ),
       content: SizedBox(
         width: 850,
-        height: 520,
+        height: 480,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isWide = constraints.maxWidth > 750;
-            final content = [
-              // Left Column: Handwritten Paper Simulation Viewport
-              Expanded(
-                flex: 11,
+            final isWide = constraints.maxWidth > 650;
+            if (isWide) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 11, child: _buildLeftPanel(theme)),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 12, child: _buildRightPanel(theme)),
+                ],
+              );
+            } else {
+              return SingleChildScrollView(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      '1. Select handwritten quote template to scan:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<ScannedQuoteTemplate>(
-                      initialValue: _selectedTemplate,
-                      hint: const Text('Select notebook estimate quote...'),
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      items: OcrScanService.sampleTemplates.map((t) {
-                        return DropdownMenuItem(value: t, child: Text(t.title));
-                      }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedTemplate = val;
-                          _isScanned = false;
-                          _isScanning = false;
-                          _logs.clear();
-                          _progress = 0.0;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: Stack(
-                        children: [
-                          _buildHandwritingSheet(theme),
-                          // Laser Scanning Line Animation
-                          if (_isScanning)
-                            AnimatedBuilder(
-                              animation: _animController,
-                              builder: (context, child) {
-                                return Positioned(
-                                  top: 310 * _animController.value,
-                                  left: 0,
-                                  right: 0,
-                                  child: Container(
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: Colors.green,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.green.withValues(
-                                            alpha: 0.8,
-                                          ),
-                                          blurRadius: 8,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
+                    SizedBox(height: 380, child: _buildLeftPanel(theme)),
+                    const SizedBox(height: 20),
+                    SizedBox(height: 380, child: _buildRightPanel(theme)),
                   ],
                 ),
-              ),
-              if (isWide) const SizedBox(width: 20),
-              // Right Column: OCR analysis log
-              Expanded(
-                flex: 12,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '2. AI Scanner Logs & Extraction:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.brightness == Brightness.light
-                              ? Colors.grey.shade900
-                              : const Color(0xFF020617),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: _logs.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'Awaiting quotation scan...',
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontFamily: 'monospace',
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: _logs.length,
-                                itemBuilder: (context, index) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 6.0),
-                                    child: Text(
-                                      _logs[index],
-                                      style: const TextStyle(
-                                        color: Colors.green,
-                                        fontFamily: 'monospace',
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ),
-                    if (_isScanning) ...[
-                      const SizedBox(height: 12),
-                      LinearProgressIndicator(
-                        value: _progress,
-                        color: Colors.green,
-                        backgroundColor: Colors.grey.shade300,
-                      ),
-                    ],
-                    if (_isScanned) ...[
-                      const SizedBox(height: 12),
-                      _buildScanResultsSummary(theme),
-                    ],
-                  ],
-                ),
-              ),
-            ];
-
-            return isWide ? Row(children: content) : Column(children: content);
+              );
+            }
           },
         ),
       ),
@@ -335,6 +220,149 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog>
     );
   }
 
+  Widget _buildLeftPanel(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '1. Select handwritten quote template to scan:',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<ScannedQuoteTemplate>(
+          initialValue: _selectedTemplate,
+          isExpanded: true,
+          hint: const Text(
+            'Select notebook estimate quote...',
+            overflow: TextOverflow.ellipsis,
+          ),
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+          ),
+          items: OcrScanService.sampleTemplates.map((t) {
+            return DropdownMenuItem(
+              value: t,
+              child: Text(t.title, overflow: TextOverflow.ellipsis),
+            );
+          }).toList(),
+          onChanged: (val) {
+            setState(() {
+              _selectedTemplate = val;
+              _isScanned = false;
+              _isScanning = false;
+              _logs.clear();
+              _progress = 0.0;
+            });
+          },
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildHandwritingSheet(theme),
+              if (_isScanning)
+                AnimatedBuilder(
+                  animation: _animController,
+                  builder: (context, child) {
+                    return Positioned(
+                      top: 310 * _animController.value,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withValues(
+                                alpha: 0.8,
+                              ),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRightPanel(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '2. AI Scanner Logs & Extraction:',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.brightness == Brightness.light
+                  ? Colors.grey.shade900
+                  : const Color(0xFF020617),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: _logs.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Awaiting quotation scan...',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _logs.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6.0),
+                        child: Text(
+                          _logs[index],
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
+        if (_isScanning) ...[
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+            value: _progress,
+            color: Colors.green,
+            backgroundColor: Colors.grey.shade300,
+          ),
+        ],
+        if (_isScanned) ...[
+          const SizedBox(height: 12),
+          _buildScanResultsSummary(theme),
+        ],
+      ],
+    );
+  }
+
   Widget _buildHandwritingSheet(ThemeData theme) {
     if (_selectedTemplate == null) {
       return Container(
@@ -352,6 +380,7 @@ class _ScanQuotationDialogState extends State<ScanQuotationDialog>
 
     return Container(
       width: double.infinity,
+      height: double.infinity,
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: isLight

@@ -104,26 +104,28 @@ class _ClientListScreenState extends State<ClientListScreen> {
           children: [
             // Screen Header
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Client Database',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Client Database',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Manage customer listings, contact details, and billing directories.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.hintColor,
+                      Text(
+                        'Manage customer listings, contact details, and billing directories.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.hintColor,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                if (state.canWrite)
+                if (state.canWrite) ...[
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _openClientForm(),
                     icon: const Icon(Icons.add),
@@ -132,11 +134,12 @@ class _ClientListScreenState extends State<ClientListScreen> {
                       backgroundColor: Colors.indigo,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
+                        horizontal: 16,
                         vertical: 12,
                       ),
                     ),
                   ),
+                ],
               ],
             ),
             const SizedBox(height: 24),
@@ -213,7 +216,7 @@ class _ClientListScreenState extends State<ClientListScreen> {
                                 fontSize: 16,
                               ),
                             ),
-                            subtitle: Padding(
+                             subtitle: Padding(
                               padding: const EdgeInsets.only(top: 6.0),
                               child: Wrap(
                                 spacing: 16,
@@ -228,10 +231,14 @@ class _ClientListScreenState extends State<ClientListScreen> {
                                         color: Colors.grey,
                                       ),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        client.email.isNotEmpty
-                                            ? client.email
-                                            : 'No email',
+                                      Flexible(
+                                        child: Text(
+                                          client.email.isNotEmpty
+                                              ? client.email
+                                              : 'No email',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -244,31 +251,36 @@ class _ClientListScreenState extends State<ClientListScreen> {
                                         color: Colors.grey,
                                       ),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        client.phone.isNotEmpty
-                                            ? client.phone
-                                            : 'No phone',
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.location_on_outlined,
-                                        size: 14,
-                                        color: Colors.grey,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Expanded(
+                                      Flexible(
                                         child: Text(
-                                          client.billingAddress,
+                                          client.phone.isNotEmpty
+                                              ? client.phone
+                                              : 'No phone',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
                                   ),
+                                  if (client.billingAddress.isNotEmpty)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on_outlined,
+                                          size: 14,
+                                          color: Colors.grey,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            client.billingAddress,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                 ],
                               ),
                             ),

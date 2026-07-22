@@ -7,6 +7,7 @@ import '../../models/client_model.dart';
 import 'invoice_wizard/invoice_wizard_screen.dart';
 import 'invoice_pdf_preview_screen.dart';
 import '../../services/email_service.dart';
+import '../../services/whatsapp_service.dart';
 
 class InvoiceDetailScreen extends StatefulWidget {
   final InvoiceModel invoice;
@@ -140,6 +141,19 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             tooltip: 'Preview PDF',
           ),
           IconButton(
+            icon: const Icon(Icons.chat_outlined, color: Color(0xFF25D366)),
+            onPressed: () {
+              WhatsappService.showWhatsappShareSheet(
+                context: context,
+                invoice: _currentInvoice,
+                client: client,
+                company: state.company,
+                template: state.pdfTemplate,
+              );
+            },
+            tooltip: 'Send via WhatsApp',
+          ),
+          IconButton(
             icon: const Icon(Icons.email_outlined),
             onPressed: _sendEmail,
             tooltip: 'Send Email to Client',
@@ -172,7 +186,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Summary Actions Header Row
-              _buildActionsBanner(state, theme),
+              _buildActionsBanner(state, client, theme),
               const SizedBox(height: 24),
 
               LayoutBuilder(
@@ -211,7 +225,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     );
   }
 
-  Widget _buildActionsBanner(AppStateProvider state, ThemeData theme) {
+  Widget _buildActionsBanner(AppStateProvider state, ClientModel client, ThemeData theme) {
     return Card(
       color: Colors.indigo.shade50.withValues(alpha: 0.15),
       shape: RoundedRectangleBorder(
@@ -220,38 +234,71 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Row(
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Icon(Icons.receipt_long, color: Colors.indigo, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Invoice is currently: ${_currentInvoice.status.name.toUpperCase()}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.indigo,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.receipt_long, color: Colors.indigo, size: 28),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Invoice Status: ${_currentInvoice.status.name.toUpperCase()}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo,
+                      ),
+                    ),
+                    Text(
+                      'Dispatch or preview invoice details.',
+                      style: TextStyle(fontSize: 11, color: theme.hintColor),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.chat, color: Color(0xFF25D366), size: 18),
+                  label: const Text(
+                    'WhatsApp',
+                    style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF25D366)),
+                  ),
+                  onPressed: () {
+                    WhatsappService.showWhatsappShareSheet(
+                      context: context,
+                      invoice: _currentInvoice,
+                      client: client,
+                      company: state.company,
+                      template: state.pdfTemplate,
+                    );
+                  },
+                ),
+                if (state.canWrite && _currentInvoice.status != InvoiceStatus.paid) ...[
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: const Text('Mark as Paid'),
+                    onPressed: _markAsPaid,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
                     ),
                   ),
-                  Text(
-                    'Ensure details match client terms before dispatching.',
-                    style: TextStyle(fontSize: 11, color: theme.hintColor),
-                  ),
                 ],
-              ),
+              ],
             ),
-            if (state.canWrite && _currentInvoice.status != InvoiceStatus.paid)
-              ElevatedButton.icon(
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Mark as Paid'),
-                onPressed: _markAsPaid,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
-              ),
           ],
         ),
       ),

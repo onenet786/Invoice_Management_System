@@ -18,6 +18,7 @@ class StorageService {
   static const String _keyPdfTemplate = 'invoice_pdf_template';
 
   final SharedPreferences _prefs;
+  SharedPreferences get prefs => _prefs;
 
   StorageService(this._prefs);
 

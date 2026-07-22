@@ -5,9 +5,12 @@ import '../models/client_model.dart';
 import '../models/product_model.dart';
 import '../models/invoice_model.dart';
 import '../services/storage_service.dart';
+import '../services/backup_service.dart';
 
 class AppStateProvider extends ChangeNotifier {
   final StorageService _storage;
+  late final BackupService _backupService;
+  BackupService get backupService => _backupService;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -45,7 +48,16 @@ class AppStateProvider extends ChangeNotifier {
         address: '',
         currency: '\$',
       ) {
+    _backupService = BackupService(_storage, _storage.prefs);
     _loadAllData();
+  }
+
+  Future<void> reloadAllData() => _loadAllData();
+
+  Future<void> _triggerAutoBackupIfEnabled() async {
+    if (_backupService.isDriveLinked && _backupService.autoBackupEnabled) {
+      await _backupService.performGoogleDriveSync();
+    }
   }
 
   Future<void> _loadAllData() async {
@@ -153,6 +165,31 @@ class AppStateProvider extends ChangeNotifier {
     return false;
   }
 
+  Future<bool> loginWithBiometrics() async {
+    _isLoading = true;
+    notifyListeners();
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final match = _users.firstWhere(
+      (u) => u.role == UserRole.admin,
+      orElse: () => _users.isNotEmpty
+          ? _users.first
+          : UserModel(
+              id: 'u-admin-default',
+              name: 'Admin User',
+              email: 'admin@invoice.com',
+              password: '',
+              role: UserRole.admin,
+            ),
+    );
+
+    _currentUser = match;
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  }
+
   void logout() {
     _currentUser = null;
     notifyListeners();
@@ -209,6 +246,7 @@ class AppStateProvider extends ChangeNotifier {
     if (!isAdmin) return; // Only Admin can change company profile
     _company = updatedCompany;
     await _storage.saveCompany(_company);
+    await _triggerAutoBackupIfEnabled();
     notifyListeners();
   }
 
@@ -217,6 +255,7 @@ class AppStateProvider extends ChangeNotifier {
     if (!canWrite) return;
     _clients.add(client);
     await _storage.saveClients(_clients);
+    await _triggerAutoBackupIfEnabled();
     notifyListeners();
   }
 
@@ -226,6 +265,7 @@ class AppStateProvider extends ChangeNotifier {
     if (index != -1) {
       _clients[index] = updatedClient;
       await _storage.saveClients(_clients);
+      await _triggerAutoBackupIfEnabled();
       notifyListeners();
     }
   }
@@ -234,6 +274,7 @@ class AppStateProvider extends ChangeNotifier {
     if (!canWrite) return;
     _clients.removeWhere((c) => c.id == id);
     await _storage.saveClients(_clients);
+    await _triggerAutoBackupIfEnabled();
     notifyListeners();
   }
 
@@ -308,6 +349,7 @@ class AppStateProvider extends ChangeNotifier {
     if (!canWrite) return;
     _invoices.add(invoice);
     await _storage.saveInvoices(_invoices);
+    await _triggerAutoBackupIfEnabled();
     notifyListeners();
   }
 
@@ -317,6 +359,7 @@ class AppStateProvider extends ChangeNotifier {
     if (index != -1) {
       _invoices[index] = updatedInvoice;
       await _storage.saveInvoices(_invoices);
+      await _triggerAutoBackupIfEnabled();
       notifyListeners();
     }
   }
@@ -325,6 +368,7 @@ class AppStateProvider extends ChangeNotifier {
     if (!canWrite) return;
     _invoices.removeWhere((inv) => inv.id == id);
     await _storage.saveInvoices(_invoices);
+    await _triggerAutoBackupIfEnabled();
     notifyListeners();
   }
 

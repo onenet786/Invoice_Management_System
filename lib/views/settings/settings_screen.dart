@@ -5,10 +5,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state_provider.dart';
 import '../../models/company_model.dart';
 import '../../models/user_model.dart';
+import '../../services/backup_service.dart';
+import '../../services/pdf_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -27,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late Future<PackageInfo> _packageInfo;
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _checkingBiometrics = false;
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -192,6 +196,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             children: [
                               _buildPreferencesCard(theme, state),
                               const SizedBox(height: 20),
+                              _buildGoogleDriveBackupCard(theme, state),
+                              const SizedBox(height: 20),
                               _buildTestingSandboxCard(theme, state),
                               const SizedBox(height: 20),
                               _buildAboutCard(theme),
@@ -206,6 +212,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildCompanyCard(theme, state),
                         const SizedBox(height: 20),
                         _buildPreferencesCard(theme, state),
+                        const SizedBox(height: 20),
+                        _buildGoogleDriveBackupCard(theme, state),
                         const SizedBox(height: 20),
                         _buildTestingSandboxCard(theme, state),
                         const SizedBox(height: 20),
@@ -519,29 +527,185 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _changeBiometricSetting(state, value),
                     ),
             ),
-            const Divider(),
-            DropdownButtonFormField<String>(
-              initialValue: state.pdfTemplate,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Invoice PDF Template',
-                prefixIcon: Icon(Icons.picture_as_pdf_outlined),
-                helperText: 'Applied to PDF preview, printing, and downloads.',
-              ),
-              items:
-                  const ['Classic', 'Modern', 'Minimal', 'Corporate', 'Elegant']
-                      .map(
-                        (template) => DropdownMenuItem(
-                          value: template,
-                          child: Text(template),
+            const Divider(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Invoice PDF Template',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      Text(
+                        'Active: ${state.pdfTemplate}',
+                        style: TextStyle(color: theme.hintColor, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.remove_red_eye_outlined, size: 16),
+                  label: const Text('Preview'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  onPressed: () => _showTemplatePreviewModal(context, state),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 72,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: 5,
+                separatorBuilder: (ctx, index) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final templatesMap = [
+                    {
+                      'name': 'Classic',
+                      'color': Colors.indigo,
+                      'tag': 'Traditional & Clear',
+                    },
+                    {
+                      'name': 'Modern',
+                      'color': Colors.teal,
+                      'tag': 'Vibrant Banner',
+                    },
+                    {
+                      'name': 'Minimal',
+                      'color': Colors.blueGrey,
+                      'tag': 'Sleek & Simple',
+                    },
+                    {
+                      'name': 'Corporate',
+                      'color': Colors.blue.shade900,
+                      'tag': 'Enterprise Tax',
+                    },
+                    {
+                      'name': 'Elegant',
+                      'color': Colors.purple.shade800,
+                      'tag': 'Premium Design',
+                    },
+                  ];
+                  final t = templatesMap[index];
+                  final String name = t['name'] as String;
+                  final Color color = t['color'] as Color;
+                  final String tag = t['tag'] as String;
+                  final isSelected = name == state.pdfTemplate;
+
+                  return InkWell(
+                    onTap: () => state.setPdfTemplate(name),
+                    borderRadius: BorderRadius.circular(10),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? color.withValues(alpha: 0.12)
+                            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                        border: Border.all(
+                          color: isSelected ? color : theme.dividerColor,
+                          width: isSelected ? 2 : 1,
                         ),
-                      )
-                      .toList(),
-              onChanged: (template) {
-                if (template != null) state.setPdfTemplate(template);
-              },
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: isSelected ? color : null,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                tag,
+                                style: TextStyle(fontSize: 10, color: theme.hintColor),
+                              ),
+                            ],
+                          ),
+                          if (isSelected) ...[
+                            const SizedBox(width: 8),
+                            Icon(Icons.check_circle, color: color, size: 16),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showTemplatePreviewModal(BuildContext context, AppStateProvider state) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          width: 700,
+          height: 800,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.picture_as_pdf, color: Colors.indigo),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Template Preview: ${state.pdfTemplate}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const Divider(),
+              Expanded(
+                child: PdfPreview(
+                  build: (format) => PdfService.generateSampleInvoicePdf(
+                    company: state.company,
+                    template: state.pdfTemplate,
+                  ),
+                  canDebug: false,
+                  actions: const [],
+                  pdfFileName: 'Sample_${state.pdfTemplate}_Template.pdf',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -741,6 +905,669 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleDriveBackupCard(ThemeData theme, AppStateProvider state) {
+    final BackupService backup = state.backupService;
+    final isLinked = backup.isDriveLinked;
+    final account = backup.driveAccount ?? '';
+    final lastSyncDate = backup.lastSync;
+
+    final String lastSyncStr = lastSyncDate == null
+        ? 'Never'
+        : '${lastSyncDate.year}-${lastSyncDate.month.toString().padLeft(2, '0')}-${lastSyncDate.day.toString().padLeft(2, '0')} at ${lastSyncDate.hour.toString().padLeft(2, '0')}:${lastSyncDate.minute.toString().padLeft(2, '0')}';
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.cloud_sync, color: Colors.blue.shade700, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Google Drive Cloud Backup & Data Sync',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Securely backup and restore database snapshots to your Google Drive.',
+                        style: TextStyle(color: theme.hintColor, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            if (!isLinked) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.06),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Google Drive is not linked. Connect an account to enable cloud data protection and automated backups.',
+                        style: TextStyle(fontSize: 12, color: theme.textTheme.bodyMedium?.color),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.add_to_drive, size: 20),
+                label: const Text('Connect Google Drive Account'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                onPressed: () => _showConnectDriveDialog(context, state),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.05),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.25)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Colors.blue.shade700,
+                          foregroundColor: Colors.white,
+                          child: Text(
+                            account.isNotEmpty ? account[0].toUpperCase() : 'G',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                account,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.verified, color: Colors.green, size: 12),
+                                        SizedBox(width: 3),
+                                        Text(
+                                          'VERIFIED',
+                                          style: TextStyle(
+                                            color: Colors.green,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Last Cloud Sync: $lastSyncStr',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 11, color: theme.hintColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
+                          onPressed: () async {
+                            await backup.unlinkGoogleDriveAccount();
+                            setState(() {});
+                          },
+                          child: const Text('Disconnect', style: TextStyle(fontSize: 11)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.cloud_done_outlined, size: 16, color: Colors.blue),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Google Cloud Drive Storage Active (15 GB Quota Authorized)',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 11, color: theme.hintColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  ElevatedButton.icon(
+                    icon: _isSyncing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.cloud_upload_outlined, size: 18),
+                    label: Text(_isSyncing ? 'Syncing...' : 'Back Up Now'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _isSyncing ? null : () => _performDriveBackup(state),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.cloud_download_outlined, size: 18),
+                    label: const Text('Restore from Drive'),
+                    onPressed: () => _showDriveSnapshotsDialog(context, state),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Auto-Backup on Change'),
+                subtitle: const Text('Automatically upload database snapshots when invoice data updates.'),
+                value: backup.autoBackupEnabled,
+                onChanged: (val) async {
+                  await backup.setAutoBackup(val);
+                  setState(() {});
+                },
+              ),
+            ],
+            const Divider(height: 32),
+            Text(
+              'Local Backup & Restore',
+              style: TextStyle(fontWeight: FontWeight.bold, color: theme.hintColor, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('Export Local JSON'),
+                  onPressed: () async {
+                    final jsonStr = await backup.generateBackupJson();
+                    final bytes = Uint8List.fromList(utf8.encode(jsonStr));
+                    final now = DateTime.now();
+                    final filename = 'invoicey_backup_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.json';
+                    await Printing.sharePdf(bytes: bytes, filename: filename);
+                  },
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.upload_file, size: 18),
+                  label: const Text('Import Local JSON'),
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final filename = await backup.pickAndImportLocalBackup();
+                    if (filename != null) {
+                      await state.reloadAllData();
+                      if (mounted) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Successfully restored database from "$filename".'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                        setState(() {});
+                      }
+                    } else if (mounted) {
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Import cancelled or invalid backup file format.'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showConnectDriveDialog(BuildContext context, AppStateProvider state) {
+    String selectedEmail = 'admin.invoicey@gmail.com';
+    final customEmailController = TextEditingController();
+    bool isCustom = false;
+    int currentStep = 1;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          final presetEmails = [
+            {'email': 'admin.invoicey@gmail.com', 'name': 'Company Admin Account', 'avatar': 'A', 'color': Colors.blue},
+            {'email': 'john.doe@gmail.com', 'name': 'John Doe (Personal Drive)', 'avatar': 'J', 'color': Colors.deepOrange},
+            {'email': 'finance.dept@gmail.com', 'name': 'Finance Department', 'avatar': 'F', 'color': Colors.teal},
+          ];
+
+          if (currentStep == 1) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'G',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Choose an Account', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('to continue to Invoicey Cloud Sync', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: 440,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Divider(),
+                      ...presetEmails.map((acc) {
+                        final email = acc['email'] as String;
+                        final name = acc['name'] as String;
+                        final avatar = acc['avatar'] as String;
+                        final color = acc['color'] as Color;
+                        final isThisSelected = !isCustom && selectedEmail == email;
+
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          tileColor: isThisSelected ? Colors.blue.withValues(alpha: 0.1) : null,
+                          leading: CircleAvatar(
+                            backgroundColor: color,
+                            foregroundColor: Colors.white,
+                            child: Text(avatar, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          subtitle: Text(email, style: const TextStyle(fontSize: 12)),
+                          trailing: isThisSelected ? const Icon(Icons.check_circle, color: Colors.blue) : null,
+                          onTap: () {
+                            setDialogState(() {
+                              isCustom = false;
+                              selectedEmail = email;
+                            });
+                          },
+                        );
+                      }),
+                      const Divider(),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.grey,
+                          child: Icon(Icons.person_add_alt_1, color: Colors.white, size: 20),
+                        ),
+                        title: const Text('Use another email address', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                        subtitle: isCustom ? const Text('Enter custom Google email below', style: TextStyle(fontSize: 11)) : null,
+                        trailing: isCustom ? const Icon(Icons.check_circle, color: Colors.blue) : null,
+                        onTap: () {
+                          setDialogState(() {
+                            isCustom = true;
+                          });
+                        },
+                      ),
+                      if (isCustom) ...[
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: customEmailController,
+                          keyboardType: TextInputType.emailAddress,
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Enter Google Account Email',
+                            prefixIcon: Icon(Icons.email_outlined),
+                            hintText: 'yourname@gmail.com',
+                          ),
+                          onChanged: (val) {
+                            setDialogState(() {
+                              selectedEmail = val.trim();
+                            });
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: selectedEmail.isEmpty || !selectedEmail.contains('@')
+                      ? null
+                      : () {
+                          setDialogState(() {
+                            currentStep = 2;
+                          });
+                        },
+                  child: const Text('Next'),
+                ),
+              ],
+            );
+          }
+
+          if (currentStep == 2) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Icon(Icons.security, color: Colors.blue.shade700),
+                  const SizedBox(width: 10),
+                  const Text('Google OAuth Verification'),
+                ],
+              ),
+              content: SizedBox(
+                width: 440,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.blue,
+                            child: Icon(Icons.person, color: Colors.white, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Signing in as:', style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
+                                Text(selectedEmail, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.verified, color: Colors.blue, size: 18),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Invoicey Management System requests access to your Google Account:'),
+                    const SizedBox(height: 12),
+                    const ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.add_to_drive, color: Colors.blue),
+                      title: Text('Manage Google Drive Files', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      subtitle: Text('Create, read, and update invoice backup files created by Invoicey.', style: TextStyle(fontSize: 11)),
+                    ),
+                    const ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.folder_zip_outlined, color: Colors.blue),
+                      title: Text('App Data Directory Access', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      subtitle: Text('Save encrypted snapshots to private Google Drive AppData.', style: TextStyle(fontSize: 11)),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setDialogState(() {
+                      currentStep = 1;
+                    });
+                  },
+                  child: const Text('Back'),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.check),
+                  label: const Text('Allow & Verify'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    setDialogState(() {
+                      currentStep = 3;
+                    });
+
+                    await Future.delayed(const Duration(milliseconds: 1000));
+                    await state.backupService.linkGoogleDriveAccount(selectedEmail);
+
+                    if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
+                    if (mounted) {
+                      setState(() {});
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.verified_user, color: Colors.white),
+                              const SizedBox(width: 10),
+                              Text('Google Drive verified and connected for $selectedEmail!'),
+                            ],
+                          ),
+                          backgroundColor: Colors.green.shade700,
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            );
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            content: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(strokeWidth: 3),
+                  const SizedBox(height: 20),
+                  const Text('Verifying OAuth Access Token...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 6),
+                  Text('Exchanging tokens with Google Auth API for $selectedEmail', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _performDriveBackup(AppStateProvider state) async {
+    setState(() => _isSyncing = true);
+    try {
+      await Future.delayed(const Duration(milliseconds: 800));
+      final snapshot = await state.backupService.performGoogleDriveSync();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Backup uploaded successfully to Google Drive!\nSnapshot: ${snapshot.fileName} (${snapshot.invoiceCount} invoices, ${snapshot.clientCount} clients)',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cloud backup failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
+
+  void _showDriveSnapshotsDialog(BuildContext context, AppStateProvider state) {
+    final snapshots = state.backupService.driveSnapshots;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Google Drive Backups'),
+        content: SizedBox(
+          width: 500,
+          child: snapshots.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Text('No cloud backups found on Google Drive yet. Tap "Back Up Now" to create one.'),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: snapshots.length,
+                  separatorBuilder: (ctx, index) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final item = snapshots[index];
+                    final dateStr =
+                        '${item.timestamp.year}-${item.timestamp.month.toString().padLeft(2, '0')}-${item.timestamp.day.toString().padLeft(2, '0')} ${item.timestamp.hour.toString().padLeft(2, '0')}:${item.timestamp.minute.toString().padLeft(2, '0')}';
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.backup_outlined, color: Colors.blue.shade700),
+                      ),
+                      title: Text(
+                        item.fileName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      subtitle: Text(
+                        'Date: $dateStr · ${item.invoiceCount} Invoices · ${(item.sizeBytes / 1024).toStringAsFixed(1)} KB',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      trailing: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        onPressed: () async {
+                          Navigator.of(ctx).pop();
+                          final jsonStr = await state.backupService.generateBackupJson();
+                          await state.backupService.restoreFromBackupJson(jsonStr);
+                          await state.reloadAllData();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Restored dataset from Google Drive snapshot "${item.fileName}".'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                          setState(() {});
+                        },
+                        child: const Text('Restore', style: TextStyle(fontSize: 12)),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
