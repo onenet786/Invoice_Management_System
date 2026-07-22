@@ -103,9 +103,10 @@ class _ClientListScreenState extends State<ClientListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Screen Header
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final heading = Column(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -121,42 +122,22 @@ class _ClientListScreenState extends State<ClientListScreen> {
                       ),
                     ),
                   ],
-                );
-                final addButton = ElevatedButton.icon(
-                  onPressed: () => _openClientForm(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Client'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+                ),
+                if (state.canWrite)
+                  ElevatedButton.icon(
+                    onPressed: () => _openClientForm(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Client'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                     ),
                   ),
-                );
-                if (constraints.maxWidth < 650) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      heading,
-                      if (state.canWrite) ...[
-                        const SizedBox(height: 16),
-                        addButton,
-                      ],
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    Expanded(child: heading),
-                    if (state.canWrite) ...[
-                      const SizedBox(width: 20),
-                      addButton,
-                    ],
-                  ],
-                );
-              },
+              ],
             ),
             const SizedBox(height: 24),
 
@@ -234,10 +215,12 @@ class _ClientListScreenState extends State<ClientListScreen> {
                             ),
                             subtitle: Padding(
                               padding: const EdgeInsets.only(top: 6.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Wrap(
+                                spacing: 16,
+                                runSpacing: 4,
                                 children: [
                                   Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Icon(
                                         Icons.email_outlined,
@@ -245,19 +228,15 @@ class _ClientListScreenState extends State<ClientListScreen> {
                                         color: Colors.grey,
                                       ),
                                       const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          client.email.isNotEmpty
-                                              ? client.email
-                                              : 'No email',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                      Text(
+                                        client.email.isNotEmpty
+                                            ? client.email
+                                            : 'No email',
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 4),
                                   Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Icon(
                                         Icons.phone_outlined,
@@ -265,19 +244,15 @@ class _ClientListScreenState extends State<ClientListScreen> {
                                         color: Colors.grey,
                                       ),
                                       const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          client.phone.isNotEmpty
-                                              ? client.phone
-                                              : 'No phone',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                      Text(
+                                        client.phone.isNotEmpty
+                                            ? client.phone
+                                            : 'No phone',
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 4),
                                   Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Icon(
                                         Icons.location_on_outlined,
