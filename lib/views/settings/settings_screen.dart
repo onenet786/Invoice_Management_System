@@ -980,11 +980,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 icon: const Icon(Icons.add_to_drive, size: 20),
-                label: const Text('Connect Google Drive Account'),
+                label: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('Connect Google Drive Account'),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade700,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
                 onPressed: () => _showConnectDriveDialog(context, state),
               ),

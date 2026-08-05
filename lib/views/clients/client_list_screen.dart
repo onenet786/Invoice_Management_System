@@ -439,38 +439,76 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isEdit = widget.client != null;
 
     return AlertDialog(
-      title: Text(isEdit ? 'Edit Client Details' : 'Add New Client'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.indigo.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(isEdit ? Icons.edit_note : Icons.person_add_alt_1, color: Colors.indigo, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEdit ? 'Edit Client Record' : 'Register New Client',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  isEdit ? 'Update billing details & contacts' : 'Create new customer entry in database',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       content: SizedBox(
-        width: 500,
+        width: 460,
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const Divider(),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Client Company / Full Name *',
-                    prefixIcon: Icon(Icons.business),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.business, color: Colors.indigo),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                   ),
                   validator: (v) => v == null || v.trim().isEmpty
                       ? 'Company/Client name is required'
                       : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Billing Email Address *',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.email_outlined, color: Colors.indigo),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
@@ -482,23 +520,27 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Contact Phone Number',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: 'Contact Phone Number (WhatsApp)',
+                    prefixIcon: const Icon(Icons.phone_outlined, color: Colors.green),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 TextFormField(
                   controller: _billingController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Billing Address *',
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.deepOrange),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                   ),
                   maxLines: 2,
                   validator: (v) => v == null || v.trim().isEmpty
@@ -506,36 +548,41 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
                       : null,
                 ),
                 const SizedBox(height: 12),
-                CheckboxListTile(
-                  title: const Text(
-                    'Shipping Address same as Billing Address',
-                    style: TextStyle(fontSize: 13),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.withValues(alpha: 0.05),
+                    border: Border.all(color: Colors.indigo.withValues(alpha: 0.2)),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  value: _sameAddress,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() {
-                        _sameAddress = val;
-                      });
-                    }
-                  },
+                  child: CheckboxListTile(
+                    title: const Text(
+                      'Shipping Address same as Billing Address',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    value: _sameAddress,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _sameAddress = val;
+                        });
+                      }
+                    },
+                  ),
                 ),
                 if (!_sameAddress) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   TextFormField(
                     controller: _shippingController,
-                    decoration: const InputDecoration(
-                      labelText: 'Shipping Address *',
-                      prefixIcon: Icon(Icons.local_shipping_outlined),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: 'Shipping Address',
+                      prefixIcon: const Icon(Icons.local_shipping_outlined, color: Colors.blue),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      filled: true,
+                      fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                     ),
                     maxLines: 2,
-                    validator: (v) =>
-                        !_sameAddress && (v == null || v.trim().isEmpty)
-                        ? 'Shipping address is required'
-                        : null,
                   ),
                 ],
               ],
@@ -548,13 +595,19 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
-          onPressed: _save,
+        ElevatedButton.icon(
+          icon: const Icon(Icons.check_circle_outline, size: 18),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(isEdit ? 'Save Changes' : 'Create Client'),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          child: Text(isEdit ? 'Save Changes' : 'Create Client'),
+          onPressed: _save,
         ),
       ],
     );

@@ -102,6 +102,20 @@ class _ProductListScreenState extends State<ProductListScreen>
     final currency = state.company.currency;
     final formatter = NumberFormat.currency(symbol: currency, decimalDigits: 2);
 
+    // Dynamically collect unique categories
+    final categoryTabs = <String>[
+      'All',
+      ...<String>{
+        'Solar',
+        'IT',
+        'Hardware',
+        'Services',
+        'Software',
+        'General',
+        ...state.products.map((p) => p.category.trim()).where((c) => c.isNotEmpty),
+      },
+    ];
+
     // Filter items
     List<ProductModel> filterProductsByCategory(String? category) {
       return state.products.where((p) {
@@ -117,156 +131,144 @@ class _ProductListScreenState extends State<ProductListScreen>
       }).toList();
     }
 
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 650;
-                final heading = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Inventory Catalog',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Configure products, standard rates, automatic SKUs, and categories.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.hintColor,
-                      ),
-                    ),
-                  ],
-                );
-                final addButton = ElevatedButton.icon(
-                  onPressed: () => _openProductForm(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Product'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                  ),
-                );
-
-                if (compact) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DefaultTabController(
+      length: categoryTabs.length,
+      child: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 650;
+                  final heading = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      heading,
+                      Text(
+                        'Inventory Catalog',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Configure products, standard rates, automatic SKUs, and categories.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.hintColor,
+                        ),
+                      ),
+                    ],
+                  );
+                  final addButton = ElevatedButton.icon(
+                    onPressed: () => _openProductForm(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Product'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                  );
+
+                  if (compact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        heading,
+                        if (state.canWrite) ...[
+                          const SizedBox(height: 16),
+                          addButton,
+                        ],
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: heading),
                       if (state.canWrite) ...[
-                        const SizedBox(height: 16),
+                        const SizedBox(width: 20),
                         addButton,
                       ],
                     ],
                   );
-                }
-                return Row(
-                  children: [
-                    Expanded(child: heading),
-                    if (state.canWrite) ...[
-                      const SizedBox(width: 20),
-                      addButton,
-                    ],
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Tab navigation & Search
-            Row(
-              children: [
-                Expanded(
-                  child: TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    labelColor: Colors.indigo,
-                    unselectedLabelColor: Colors.grey,
-                    indicatorColor: Colors.indigo,
-                    tabs: const [
-                      Tab(text: 'All Items'),
-                      Tab(text: 'Solar Equipment'),
-                      Tab(text: 'IT Hardware'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Search input field
-            Card(
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                },
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (val) {
-                    setState(() {
-                      _searchQuery = val;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search catalog by SKU, name, or description...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: InputBorder.none,
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                              });
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-            // TabBarView implementation
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
+              // Tab navigation & Search
+              Row(
                 children: [
-                  _buildProductGrid(
-                    filterProductsByCategory(null),
-                    formatter,
-                    theme,
-                    state,
-                  ),
-                  _buildProductGrid(
-                    filterProductsByCategory('Solar'),
-                    formatter,
-                    theme,
-                    state,
-                  ),
-                  _buildProductGrid(
-                    filterProductsByCategory('IT'),
-                    formatter,
-                    theme,
-                    state,
+                  Expanded(
+                    child: TabBar(
+                      isScrollable: true,
+                      labelColor: Colors.indigo,
+                      unselectedLabelColor: Colors.grey,
+                      indicatorColor: Colors.indigo,
+                      tabs: categoryTabs.map((cat) {
+                        return Tab(text: cat == 'All' ? 'All Items' : cat);
+                      }).toList(),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+
+              // Search input field
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search catalog by SKU, name, or description...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: InputBorder.none,
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // TabBarView implementation
+              Expanded(
+                child: TabBarView(
+                  children: categoryTabs.map((cat) {
+                    final filterCat = cat == 'All' ? null : cat;
+                    return _buildProductGrid(
+                      filterProductsByCategory(filterCat),
+                      formatter,
+                      theme,
+                      state,
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -612,79 +614,126 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
   Widget build(BuildContext context) {
     final isEdit = widget.product != null;
     final state = Provider.of<AppStateProvider>(context, listen: false);
+    final theme = Theme.of(context);
+    final currencySymbol = state.company.currency;
     final categories =
         <String>{
             'Solar',
             'Hardware',
             'IT',
+            'Services',
+            'Software',
+            'General',
             ...state.products.map((product) => product.category.trim()),
             if (_category.isNotEmpty) _category,
           }.where((category) => category.isNotEmpty).toList()
           ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     return AlertDialog(
-      title: Text(isEdit ? 'Edit Catalog Product' : 'Add New Catalog Product'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.indigo.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(isEdit ? Icons.edit_note : Icons.add_shopping_cart, color: Colors.indigo, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEdit ? 'Edit Catalog Product' : 'Add Catalog Product',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  isEdit ? 'Update product pricing & details' : 'Register new item in inventory database',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       content: SizedBox(
-        width: 500,
+        width: 480,
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Divider(),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Product Name *',
-                    prefixIcon: Icon(Icons.shopping_bag_outlined),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.shopping_bag_outlined, color: Colors.indigo),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                   ),
                   validator: (v) => v == null || v.trim().isEmpty
                       ? 'Product name is required'
                       : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 TextFormField(
                   controller: _skuController,
                   readOnly: true,
                   decoration: InputDecoration(
                     labelText: 'Auto-generated SKU',
-                    prefixIcon: const Icon(Icons.qr_code_scanner_outlined),
-                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.qr_code_scanner_outlined, color: Colors.blueGrey),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                     helperText: 'Generated from category and product name',
                     suffixIcon: IconButton(
                       tooltip: 'Generate SKU again',
                       onPressed: _refreshGeneratedSku,
-                      icon: const Icon(Icons.refresh),
+                      icon: const Icon(Icons.refresh, color: Colors.indigo),
                     ),
                   ),
                   validator: (v) => v == null || v.trim().isEmpty
                       ? 'SKU Code is required'
                       : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  initialValue: _category,
-                  decoration: const InputDecoration(
+                  key: ValueKey(_category),
+                  initialValue: categories.contains(_category) ? _category : (categories.isNotEmpty ? categories.first : 'General'),
+                  isExpanded: true,
+                  decoration: InputDecoration(
                     labelText: 'Product Category *',
-                    prefixIcon: Icon(Icons.category_outlined),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.category_outlined, color: Colors.indigo),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                   ),
                   items: [
                     ...categories.map(
                       (category) => DropdownMenuItem(
                         value: category,
-                        child: Text(category),
+                        child: Text(category, overflow: TextOverflow.ellipsis),
                       ),
                     ),
                     const DropdownMenuItem(
                       value: '__add_category__',
                       child: Row(
                         children: [
-                          Icon(Icons.add, size: 18),
+                          Icon(Icons.add, size: 18, color: Colors.indigo),
                           SizedBox(width: 8),
-                          Text('Add new category'),
+                          Text('Add new category', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
                         ],
                       ),
                     ),
@@ -710,18 +759,20 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                     decoration: InputDecoration(
                       labelText: 'New category name',
                       hintText: 'Example: Hardware',
-                      prefixIcon: const Icon(Icons.create_new_folder_outlined),
-                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.create_new_folder_outlined, color: Colors.indigo),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      filled: true,
+                      fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                       suffixIcon: IconButton(
                         tooltip: 'Add category',
                         onPressed: _addCategory,
-                        icon: const Icon(Icons.check),
+                        icon: const Icon(Icons.check, color: Colors.green),
                       ),
                     ),
                     onFieldSubmitted: (_) => _addCategory(),
                   ),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final priceField = TextFormField(
@@ -729,10 +780,12 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Unit Price *',
-                        prefixIcon: Icon(Icons.attach_money),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: 'Unit Price ($currencySymbol) *',
+                        prefixIcon: const Icon(Icons.payments_outlined, color: Colors.green),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        filled: true,
+                        fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) {
@@ -749,10 +802,12 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Standard Tax Rate (%)',
-                        prefixIcon: Icon(Icons.percent),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: 'Tax Rate (%)',
+                        prefixIcon: const Icon(Icons.percent, color: Colors.orange),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        filled: true,
+                        fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) {
@@ -768,7 +823,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                       return Column(
                         children: [
                           priceField,
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
                           taxField,
                         ],
                       );
@@ -776,21 +831,23 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                     return Row(
                       children: [
                         Expanded(child: priceField),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
                         Expanded(child: taxField),
                       ],
                     );
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 TextFormField(
                   controller: _descController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Description / Specifications',
-                    prefixIcon: Icon(Icons.description_outlined),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.notes, color: Colors.blueGrey),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
                   ),
-                  maxLines: 3,
+                  maxLines: 2,
                 ),
               ],
             ),
@@ -802,13 +859,19 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
-          onPressed: _save,
+        ElevatedButton.icon(
+          icon: const Icon(Icons.check_circle_outline, size: 18),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(isEdit ? 'Save Changes' : 'Add to Catalog'),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          child: Text(isEdit ? 'Save Changes' : 'Add to Catalog'),
+          onPressed: _save,
         ),
       ],
     );
