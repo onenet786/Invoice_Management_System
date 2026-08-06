@@ -28,14 +28,14 @@ class BackupSnapshotInfo {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'fileName': fileName,
-        'timestamp': timestamp.toIso8601String(),
-        'invoiceCount': invoiceCount,
-        'clientCount': clientCount,
-        'productCount': productCount,
-        'sizeBytes': sizeBytes,
-      };
+    'id': id,
+    'fileName': fileName,
+    'timestamp': timestamp.toIso8601String(),
+    'invoiceCount': invoiceCount,
+    'clientCount': clientCount,
+    'productCount': productCount,
+    'sizeBytes': sizeBytes,
+  };
 
   factory BackupSnapshotInfo.fromJson(Map<String, dynamic> json) =>
       BackupSnapshotInfo(
@@ -66,6 +66,7 @@ class BackupService {
     final str = _prefs.getString(_keyDriveLastSync);
     return str != null ? DateTime.tryParse(str) : null;
   }
+
   bool get autoBackupEnabled => _prefs.getBool(_keyAutoBackup) ?? false;
 
   List<BackupSnapshotInfo> get driveSnapshots {
@@ -98,6 +99,7 @@ class BackupService {
       'invoices': invoices.map((i) => i.toJson()).toList(),
       'preferences': {
         'pdfTemplate': _storage.pdfTemplate,
+        'invoiceNumberFormat': _storage.invoiceNumberFormat,
         'biometricEnabled': _storage.biometricEnabled,
       },
     };
@@ -144,6 +146,11 @@ class BackupService {
         if (prefsMap.containsKey('pdfTemplate')) {
           await _storage.savePdfTemplate(prefsMap['pdfTemplate']);
         }
+        if (prefsMap.containsKey('invoiceNumberFormat')) {
+          await _storage.saveInvoiceNumberFormat(
+            prefsMap['invoiceNumberFormat'],
+          );
+        }
         if (prefsMap.containsKey('biometricEnabled')) {
           await _storage.saveBiometricEnabled(prefsMap['biometricEnabled']);
         }
@@ -182,7 +189,8 @@ class BackupService {
 
     final snapshot = BackupSnapshotInfo(
       id: 'gdrive_${now.millisecondsSinceEpoch}',
-      fileName: 'invoicey_backup_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour}${now.minute}.json',
+      fileName:
+          'invoicey_backup_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour}${now.minute}.json',
       timestamp: now,
       invoiceCount: invoices.length,
       clientCount: clients.length,
@@ -198,7 +206,9 @@ class BackupService {
       currentSnapshots.removeRange(10, currentSnapshots.length);
     }
 
-    final rawJson = json.encode(currentSnapshots.map((s) => s.toJson()).toList());
+    final rawJson = json.encode(
+      currentSnapshots.map((s) => s.toJson()).toList(),
+    );
     await _prefs.setString(_keyDriveSnapshots, rawJson);
     await _prefs.setString(_keyDriveLastSync, now.toIso8601String());
 

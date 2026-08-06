@@ -47,6 +47,24 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
   }
 
+  void _convertQuoteToInvoice() async {
+    final state = Provider.of<AppStateProvider>(context, listen: false);
+    final invoice = await state.convertQuoteToInvoice(_currentInvoice);
+    if (!mounted || invoice == null) return;
+    setState(() {
+      _currentInvoice = _currentInvoice.copyWith(
+        convertedInvoiceId: invoice.id,
+      );
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Created invoice ${invoice.invoiceNumber} from this quote.',
+        ),
+      ),
+    );
+  }
+
   void _sendEmail() async {
     final state = Provider.of<AppStateProvider>(context, listen: false);
     final client = state.clients.firstWhere(
@@ -126,7 +144,9 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Invoice Details: ${_currentInvoice.invoiceNumber}'),
+        title: Text(
+          '${_currentInvoice.documentType == InvoiceDocumentType.quote ? 'Quote' : 'Invoice'} Details: ${_currentInvoice.invoiceNumber}',
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined),
@@ -225,7 +245,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     );
   }
 
-  Widget _buildActionsBanner(AppStateProvider state, ClientModel client, ThemeData theme) {
+  Widget _buildActionsBanner(
+    AppStateProvider state,
+    ClientModel client,
+    ThemeData theme,
+  ) {
     return Card(
       color: Colors.indigo.shade50.withValues(alpha: 0.15),
       shape: RoundedRectangleBorder(
@@ -240,8 +264,9 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           alignment: WrapAlignment.spaceBetween,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 const Icon(Icons.receipt_long, color: Colors.indigo, size: 28),
                 const SizedBox(width: 12),
@@ -249,28 +274,38 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Invoice Status: ${_currentInvoice.status.name.toUpperCase()}',
+                      '${_currentInvoice.documentType == InvoiceDocumentType.quote ? 'Quote' : 'Invoice'} Status: ${_currentInvoice.status.name.toUpperCase()}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.indigo,
                       ),
                     ),
                     Text(
-                      'Dispatch or preview invoice details.',
+                      _currentInvoice.documentType == InvoiceDocumentType.quote
+                          ? 'Approve this quote to generate an invoice.'
+                          : 'Dispatch or preview invoice details.',
                       style: TextStyle(fontSize: 11, color: theme.hintColor),
                     ),
                   ],
                 ),
               ],
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.chat, color: Color(0xFF25D366), size: 18),
+                  icon: const Icon(
+                    Icons.chat,
+                    color: Color(0xFF25D366),
+                    size: 18,
+                  ),
                   label: const Text(
                     'WhatsApp',
-                    style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Color(0xFF25D366),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFF25D366)),
@@ -285,8 +320,23 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                     );
                   },
                 ),
-                if (state.canWrite && _currentInvoice.status != InvoiceStatus.paid) ...[
-                  const SizedBox(width: 8),
+                if (state.canWrite &&
+                    _currentInvoice.documentType == InvoiceDocumentType.quote &&
+                    _currentInvoice.convertedInvoiceId == null) ...[
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: const Text('Approve & Create Invoice'),
+                    onPressed: _convertQuoteToInvoice,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+                if (state.canWrite &&
+                    _currentInvoice.documentType ==
+                        InvoiceDocumentType.invoice &&
+                    _currentInvoice.status != InvoiceStatus.paid) ...[
                   ElevatedButton.icon(
                     icon: const Icon(Icons.check_circle_outline, size: 18),
                     label: const Text('Mark as Paid'),

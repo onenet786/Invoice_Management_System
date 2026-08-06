@@ -16,6 +16,8 @@ class StorageService {
   static const String _keyFirstRun = 'invoice_first_run';
   static const String _keyBiometricEnabled = 'invoice_biometric_enabled';
   static const String _keyPdfTemplate = 'invoice_pdf_template';
+  static const String _keyInvoiceNumberFormat = 'invoice_number_format';
+  static const String defaultInvoiceNumberFormat = 'INV-{YYYY}-{NNNN}';
 
   final SharedPreferences _prefs;
   SharedPreferences get prefs => _prefs;
@@ -35,12 +37,21 @@ class StorageService {
     return templates.contains(saved) ? saved! : 'Classic';
   }
 
+  String get invoiceNumberFormat {
+    final saved = _prefs.getString(_keyInvoiceNumberFormat)?.trim();
+    return saved == null || saved.isEmpty ? defaultInvoiceNumberFormat : saved;
+  }
+
   Future<void> saveBiometricEnabled(bool enabled) async {
     await _prefs.setBool(_keyBiometricEnabled, enabled);
   }
 
   Future<void> savePdfTemplate(String template) async {
     await _prefs.setString(_keyPdfTemplate, template);
+  }
+
+  Future<void> saveInvoiceNumberFormat(String format) async {
+    await _prefs.setString(_keyInvoiceNumberFormat, format);
   }
 
   // Seed the original demonstration workspace only after the user chooses it.

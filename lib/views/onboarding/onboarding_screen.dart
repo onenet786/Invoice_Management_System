@@ -538,7 +538,7 @@ class _CompanySetupFormState extends State<CompanySetupForm> {
                   final taxField = TextFormField(
                     controller: _tax,
                     decoration: const InputDecoration(
-                      labelText: 'Tax / registration ID',
+                      labelText: 'Tax / registration ID (Optional)',
                       prefixIcon: Icon(Icons.badge_outlined),
                     ),
                   );

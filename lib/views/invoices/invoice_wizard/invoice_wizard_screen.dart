@@ -9,8 +9,13 @@ import '../../../models/product_model.dart';
 
 class InvoiceWizardScreen extends StatefulWidget {
   final InvoiceModel? invoice;
+  final InvoiceDocumentType documentType;
 
-  const InvoiceWizardScreen({super.key, this.invoice});
+  const InvoiceWizardScreen({
+    super.key,
+    this.invoice,
+    this.documentType = InvoiceDocumentType.invoice,
+  });
 
   @override
   State<InvoiceWizardScreen> createState() => _InvoiceWizardScreenState();
@@ -29,6 +34,13 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
   late List<InvoiceItemModel> _items;
   late InvoiceStatus _status;
 
+  bool get _isQuote =>
+      widget.invoice?.documentType == InvoiceDocumentType.quote ||
+      (widget.invoice == null &&
+          widget.documentType == InvoiceDocumentType.quote);
+
+  String get _documentLabel => _isQuote ? 'Quote' : 'Invoice';
+
   // Add Item Temp State
   ProductModel? _tempSelectedProduct;
   final _tempQtyController = TextEditingController(text: '1');
@@ -42,7 +54,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
     final inv = widget.invoice;
 
     if (inv == null) {
-      _invoiceNumber = state.generateNextInvoiceNumber();
+      _invoiceNumber = _isQuote
+          ? state.generateNextQuoteNumber()
+          : state.generateNextInvoiceNumber();
       _issueDate = DateTime.now();
       _dueDate = DateTime.now().add(const Duration(days: 30));
       _notes = '';
@@ -164,6 +178,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
         subTotal: _subTotal,
         taxTotal: _taxTotal,
         grandTotal: _grandTotal,
+        documentType: _isQuote
+            ? InvoiceDocumentType.quote
+            : InvoiceDocumentType.invoice,
       );
       await state.addInvoice(newInvoice);
     } else {
@@ -209,7 +226,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
     final state = Provider.of<AppStateProvider>(context);
     final theme = Theme.of(context);
     final isEdit = widget.invoice != null;
-    final formatter = NumberFormat.currency(symbol: state.company.currency, decimalDigits: 2);
+    final formatter = NumberFormat.currency(
+      symbol: state.company.currency,
+      decimalDigits: 2,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -221,13 +241,22 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 color: Colors.indigo.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.receipt_long_outlined, color: Colors.indigo, size: 20),
+              child: const Icon(
+                Icons.receipt_long_outlined,
+                color: Colors.indigo,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                isEdit ? 'Edit Invoice $_invoiceNumber' : 'Create New Invoice',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                isEdit
+                    ? 'Edit $_documentLabel $_invoiceNumber'
+                    : 'Create New $_documentLabel',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -238,10 +267,18 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
             padding: const EdgeInsets.only(right: 16.0),
             child: Chip(
               backgroundColor: Colors.indigo.shade50,
-              avatar: const Icon(Icons.account_balance_wallet_outlined, size: 16, color: Colors.indigo),
+              avatar: const Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 16,
+                color: Colors.indigo,
+              ),
               label: Text(
                 'Total: ${formatter.format(_grandTotal)}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.indigo),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: Colors.indigo,
+                ),
               ),
             ),
           ),
@@ -256,11 +293,16 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 // Custom Executive Step Navigation Bar
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.cardColor,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.indigo.withValues(alpha: 0.15)),
+                    border: Border.all(
+                      color: Colors.indigo.withValues(alpha: 0.15),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.03),
@@ -301,7 +343,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 // Active Step Content
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 12.0,
+                    ),
                     child: IndexedStack(
                       index: _currentStep,
                       children: [
@@ -315,10 +360,17 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
 
                 // Executive Navigation Controls Footer
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.cardColor,
-                    border: Border(top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5))),
+                    border: Border(
+                      top: BorderSide(
+                        color: theme.dividerColor.withValues(alpha: 0.5),
+                      ),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -327,8 +379,13 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                           icon: const Icon(Icons.arrow_back, size: 16),
                           label: const Text('Back'),
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                           onPressed: () => setState(() => _currentStep--),
                         )
@@ -339,13 +396,27 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                         ),
                       const Spacer(),
                       ElevatedButton.icon(
-                        icon: Icon(_currentStep == 2 ? Icons.check_circle : Icons.arrow_forward, size: 18),
-                        label: Text(_currentStep == 2 ? 'Finalize & Save Invoice' : 'Continue to Next Step'),
+                        icon: Icon(
+                          _currentStep == 2
+                              ? Icons.check_circle
+                              : Icons.arrow_forward,
+                          size: 18,
+                        ),
+                        label: Text(
+                          _currentStep == 2
+                              ? 'Finalize & Save $_documentLabel'
+                              : 'Continue to Next Step',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.indigo,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           elevation: 2,
                         ),
                         onPressed: () {
@@ -357,7 +428,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                             if (_items.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Please add at least one line item to proceed.'),
+                                  content: Text(
+                                    'Please add at least one line item to proceed.',
+                                  ),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -398,7 +471,8 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
         onTap: () {
           if (stepIndex < _currentStep) {
             setState(() => _currentStep = stepIndex);
-          } else if (stepIndex == 1 && _step1FormKey.currentState?.validate() == true) {
+          } else if (stepIndex == 1 &&
+              _step1FormKey.currentState?.validate() == true) {
             setState(() => _currentStep = 1);
           } else if (stepIndex == 2 && _items.isNotEmpty) {
             setState(() => _currentStep = 2);
@@ -415,13 +489,17 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 decoration: BoxDecoration(
                   color: isActive
                       ? Colors.indigo
-                      : (isCompleted ? Colors.green.shade100 : theme.dividerColor.withValues(alpha: 0.2)),
+                      : (isCompleted
+                            ? Colors.green.shade100
+                            : theme.dividerColor.withValues(alpha: 0.2)),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   isCompleted ? Icons.check : icon,
                   size: 18,
-                  color: isActive ? Colors.white : (isCompleted ? Colors.green.shade800 : theme.hintColor),
+                  color: isActive
+                      ? Colors.white
+                      : (isCompleted ? Colors.green.shade800 : theme.hintColor),
                 ),
               ),
               const SizedBox(width: 10),
@@ -434,7 +512,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       title,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                        fontWeight: isActive
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                         color: color,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -467,7 +547,8 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
   // Step 1: Client & Dates Setup
   Widget _buildStep1ClientDetails(AppStateProvider state, ThemeData theme) {
     final bool hasClients = state.clients.isNotEmpty;
-    final String? validClientId = hasClients && state.clients.any((c) => c.id == _selectedClientId)
+    final String? validClientId =
+        hasClients && state.clients.any((c) => c.id == _selectedClientId)
         ? _selectedClientId
         : null;
 
@@ -496,7 +577,11 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       color: Colors.indigo,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.receipt_outlined, color: Colors.white, size: 24),
+                    child: const Icon(
+                      Icons.receipt_outlined,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -505,11 +590,18 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       children: [
                         Text(
                           'Invoice Reference: $_invoiceNumber',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.indigo,
+                          ),
                         ),
                         Text(
                           'Company: ${state.company.name} | Currency: ${state.company.currency}',
-                          style: TextStyle(fontSize: 12, color: theme.hintColor),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.hintColor,
+                          ),
                         ),
                       ],
                     ),
@@ -523,7 +615,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
           // Client Section Card
           Card(
             elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(18.0),
               child: Column(
@@ -531,20 +625,30 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.people_outline, color: Colors.indigo, size: 20),
+                      const Icon(
+                        Icons.people_outline,
+                        color: Colors.indigo,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
                           'Bill To Client / Customer Directory *',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       TextButton.icon(
                         icon: const Icon(Icons.person_add_alt_1, size: 16),
                         label: const Text('Add Client'),
-                        style: TextButton.styleFrom(foregroundColor: Colors.indigo),
-                        onPressed: () => _showQuickAddClientDialog(context, state),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.indigo,
+                        ),
+                        onPressed: () =>
+                            _showQuickAddClientDialog(context, state),
                       ),
                     ],
                   ),
@@ -560,10 +664,17 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     ),
                     decoration: InputDecoration(
                       labelText: 'Select Customer *',
-                      prefixIcon: const Icon(Icons.business, color: Colors.indigo),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(
+                        Icons.business,
+                        color: Colors.indigo,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       filled: true,
-                      fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                      fillColor: theme.brightness == Brightness.light
+                          ? Colors.grey.shade50
+                          : Colors.grey.shade900,
                     ),
                     items: state.clients.map((client) {
                       return DropdownMenuItem<String>(
@@ -582,7 +693,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                         _selectedClientId = val;
                       });
                     },
-                    validator: (v) => v == null || v.isEmpty ? 'Client selection is required' : null,
+                    validator: (v) => v == null || v.isEmpty
+                        ? 'Client selection is required'
+                        : null,
                   ),
                 ],
               ),
@@ -593,7 +706,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
           // Date Selection Section
           Card(
             elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(18.0),
               child: Column(
@@ -604,14 +719,25 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     children: [
                       const Text(
                         'Invoice Billing Schedule:',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Chip(
                         labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                        avatar: const Icon(Icons.schedule, size: 14, color: Colors.indigo),
+                        avatar: const Icon(
+                          Icons.schedule,
+                          size: 14,
+                          color: Colors.indigo,
+                        ),
                         label: Text(
                           '$daysDiff Days Term',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.indigo),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.indigo,
+                          ),
                         ),
                         backgroundColor: Colors.indigo.shade50,
                       ),
@@ -632,7 +758,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                             setState(() {
                               _issueDate = picked;
                               if (_dueDate.isBefore(_issueDate)) {
-                                _dueDate = _issueDate.add(const Duration(days: 30));
+                                _dueDate = _issueDate.add(
+                                  const Duration(days: 30),
+                                );
                               }
                             });
                           }
@@ -640,12 +768,21 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                         child: InputDecorator(
                           decoration: InputDecoration(
                             labelText: 'Invoice Issue Date *',
-                            prefixIcon: const Icon(Icons.calendar_today_outlined, color: Colors.indigo),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            prefixIcon: const Icon(
+                              Icons.calendar_today_outlined,
+                              color: Colors.indigo,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             filled: true,
-                            fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                            fillColor: theme.brightness == Brightness.light
+                                ? Colors.grey.shade50
+                                : Colors.grey.shade900,
                           ),
-                          child: Text(DateFormat('yyyy-MM-dd').format(_issueDate)),
+                          child: Text(
+                            DateFormat('yyyy-MM-dd').format(_issueDate),
+                          ),
                         ),
                       );
 
@@ -666,15 +803,24 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                         child: InputDecorator(
                           decoration: InputDecoration(
                             labelText: 'Payment Due Date *',
-                            prefixIcon: const Icon(Icons.calendar_month_outlined, color: Colors.deepOrange),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            prefixIcon: const Icon(
+                              Icons.calendar_month_outlined,
+                              color: Colors.deepOrange,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             filled: true,
-                            fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                            fillColor: theme.brightness == Brightness.light
+                                ? Colors.grey.shade50
+                                : Colors.grey.shade900,
                           ),
                           child: Text(
                             DateFormat('yyyy-MM-dd').format(_dueDate),
                             style: TextStyle(
-                              color: _dueDate.isBefore(DateTime.now()) && _status != InvoiceStatus.paid
+                              color:
+                                  _dueDate.isBefore(DateTime.now()) &&
+                                      _status != InvoiceStatus.paid
                                   ? Colors.red
                                   : null,
                               fontWeight: FontWeight.bold,
@@ -710,7 +856,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
           // Payment Terms & Notes
           Card(
             elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(18.0),
               child: Column(
@@ -726,26 +874,38 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     runSpacing: 8,
                     children: [
                       ActionChip(
-                        label: const Text('Net 30 Days', style: TextStyle(fontSize: 11)),
+                        label: const Text(
+                          'Net 30 Days',
+                          style: TextStyle(fontSize: 11),
+                        ),
                         onPressed: () {
                           setState(() {
-                            _notes = 'Payment due within 30 days via direct bank transfer or online payment.';
+                            _notes =
+                                'Payment due within 30 days via direct bank transfer or online payment.';
                           });
                         },
                       ),
                       ActionChip(
-                        label: const Text('Due Upon Receipt', style: TextStyle(fontSize: 11)),
+                        label: const Text(
+                          'Due Upon Receipt',
+                          style: TextStyle(fontSize: 11),
+                        ),
                         onPressed: () {
                           setState(() {
-                            _notes = 'Payment is due immediately upon receipt of this invoice.';
+                            _notes =
+                                'Payment is due immediately upon receipt of this invoice.';
                           });
                         },
                       ),
                       ActionChip(
-                        label: const Text('50% Upfront Deposit', style: TextStyle(fontSize: 11)),
+                        label: const Text(
+                          '50% Upfront Deposit',
+                          style: TextStyle(fontSize: 11),
+                        ),
                         onPressed: () {
                           setState(() {
-                            _notes = '50% advance deposit required prior to project delivery.';
+                            _notes =
+                                '50% advance deposit required prior to project delivery.';
                           });
                         },
                       ),
@@ -757,10 +917,17 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     key: ValueKey(_notes),
                     decoration: InputDecoration(
                       labelText: 'Custom Terms / Bank Details',
-                      prefixIcon: const Icon(Icons.note_alt_outlined, color: Colors.indigo),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(
+                        Icons.note_alt_outlined,
+                        color: Colors.indigo,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       filled: true,
-                      fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                      fillColor: theme.brightness == Brightness.light
+                          ? Colors.grey.shade50
+                          : Colors.grey.shade900,
                       hintText: 'e.g. Bank Transfer: IBAN PK00-1234-5678-9000',
                     ),
                     maxLines: 2,
@@ -799,12 +966,19 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.add_shopping_cart, color: Colors.indigo, size: 20),
+                    const Icon(
+                      Icons.add_shopping_cart,
+                      color: Colors.indigo,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
                         'Select Catalog Item / Add Custom Item:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -816,9 +990,13 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       ),
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.indigo,
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
                       ),
-                      onPressed: () => _showQuickAddProductDialog(context, state),
+                      onPressed: () =>
+                          _showQuickAddProductDialog(context, state),
                     ),
                   ],
                 ),
@@ -826,17 +1004,27 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 DropdownButtonFormField<ProductModel>(
                   initialValue: _tempSelectedProduct,
                   isExpanded: true,
-                  hint: const Text('Choose a product from catalog...', overflow: TextOverflow.ellipsis),
+                  hint: const Text(
+                    'Choose a product from catalog...',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search, color: Colors.indigo),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     filled: true,
-                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                    fillColor: theme.brightness == Brightness.light
+                        ? Colors.grey.shade50
+                        : Colors.grey.shade900,
                   ),
                   items: state.products.map((p) {
                     return DropdownMenuItem<ProductModel>(
                       value: p,
-                      child: Text('${p.name} (${p.sku}) - ${formatter.format(p.unitPrice)}', overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        '${p.name} (${p.sku}) - ${formatter.format(p.unitPrice)}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     );
                   }).toList(),
                   onChanged: _onProductChanged,
@@ -847,25 +1035,43 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     builder: (context, constraints) {
                       final priceField = TextFormField(
                         controller: _tempPriceController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Unit Price (${state.company.currency}) *',
-                          prefixIcon: const Icon(Icons.payments_outlined, color: Colors.green),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(
+                            Icons.payments_outlined,
+                            color: Colors.green,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           filled: true,
-                          fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                          fillColor: theme.brightness == Brightness.light
+                              ? Colors.grey.shade50
+                              : Colors.grey.shade900,
                         ),
                       );
 
                       final taxField = TextFormField(
                         controller: _tempTaxController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Tax Rate (%)',
-                          prefixIcon: const Icon(Icons.percent, color: Colors.orange),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(
+                            Icons.percent,
+                            color: Colors.orange,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           filled: true,
-                          fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                          fillColor: theme.brightness == Brightness.light
+                              ? Colors.grey.shade50
+                              : Colors.grey.shade900,
                         ),
                       );
 
@@ -874,10 +1080,17 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
                           labelText: 'Quantity *',
-                          prefixIcon: const Icon(Icons.format_list_numbered, color: Colors.indigo),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(
+                            Icons.format_list_numbered,
+                            color: Colors.indigo,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           filled: true,
-                          fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                          fillColor: theme.brightness == Brightness.light
+                              ? Colors.grey.shade50
+                              : Colors.grey.shade900,
                         ),
                       );
 
@@ -917,8 +1130,13 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.indigo,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
@@ -940,7 +1158,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
             if (_items.isNotEmpty)
               TextButton.icon(
                 icon: const Icon(Icons.clear_all, size: 16, color: Colors.red),
-                label: const Text('Clear All', style: TextStyle(color: Colors.red, fontSize: 12)),
+                label: const Text(
+                  'Clear All',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
                 onPressed: () => setState(() => _items.clear()),
               ),
           ],
@@ -957,11 +1178,21 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
             ),
             child: Column(
               children: [
-                Icon(Icons.inventory_2_outlined, size: 48, color: theme.hintColor.withValues(alpha: 0.5)),
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 48,
+                  color: theme.hintColor.withValues(alpha: 0.5),
+                ),
                 const SizedBox(height: 12),
-                const Text('No line items added yet.', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'No line items added yet.',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 4),
-                Text('Select a product from the dropdown above to populate this invoice.', style: TextStyle(fontSize: 12, color: theme.hintColor)),
+                Text(
+                  'Select a product from the dropdown above to populate this invoice.',
+                  style: TextStyle(fontSize: 12, color: theme.hintColor),
+                ),
               ],
             ),
           )
@@ -974,16 +1205,30 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
               final line = _items[idx];
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   leading: CircleAvatar(
                     backgroundColor: Colors.indigo.shade50,
-                    child: Text('${idx + 1}', style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      '${idx + 1}',
+                      style: const TextStyle(
+                        color: Colors.indigo,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   title: Text(
                     line.productName,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                   subtitle: Text(
                     'Qty: ${line.quantity} × ${formatter.format(line.unitPrice)} | Tax: ${line.taxRate.toStringAsFixed(0)}%',
@@ -994,11 +1239,19 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     children: [
                       Text(
                         formatter.format(line.lineTotal),
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo, fontSize: 15),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo,
+                          fontSize: 15,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                          size: 20,
+                        ),
                         onPressed: () => _removeItem(idx),
                       ),
                     ],
@@ -1014,7 +1267,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
           Card(
             elevation: 2,
             color: Colors.indigo.shade900,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -1022,26 +1277,57 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Subtotal:', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                      Text(formatter.format(_subTotal), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                      const Text(
+                        'Subtotal:',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      Text(
+                        formatter.format(_subTotal),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Tax Total:', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                      Text(formatter.format(_taxTotal), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                      const Text(
+                        'Tax Total:',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      Text(
+                        formatter.format(_taxTotal),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
                     ],
                   ),
                   const Divider(color: Colors.white24, height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Grand Total Due:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Text(
+                        'Grand Total Due:',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                       Text(
                         formatter.format(_grandTotal),
-                        style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 20),
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
                       ),
                     ],
                   ),
@@ -1077,14 +1363,20 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
       children: [
         const Text(
           'Invoice Document Summary Review:',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.indigo,
+          ),
         ),
         const SizedBox(height: 14),
 
         // Invoice Mock Sheet Preview
         Card(
           elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Column(
@@ -1096,17 +1388,39 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(state.company.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
-                        Text('Tax ID: ${state.company.taxId}', style: TextStyle(fontSize: 12, color: theme.hintColor)),
+                        Text(
+                          state.company.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.indigo,
+                          ),
+                        ),
+                        Text(
+                          'Tax ID: ${state.company.taxId}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.hintColor,
+                          ),
+                        ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.indigo.shade50,
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Text(_invoiceNumber, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                      child: Text(
+                        _invoiceNumber,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1118,24 +1432,61 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Billed To:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          Text(client.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          if (client.email.isNotEmpty) Text(client.email, style: const TextStyle(fontSize: 12)),
-                          if (client.billingAddress.isNotEmpty) Text(client.billingAddress, style: const TextStyle(fontSize: 12)),
+                          const Text(
+                            'Billed To:',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          Text(
+                            client.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (client.email.isNotEmpty)
+                            Text(
+                              client.email,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          if (client.billingAddress.isNotEmpty)
+                            Text(
+                              client.billingAddress,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                         ],
                       ),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('Issue Date: ${DateFormat('yyyy-MM-dd').format(_issueDate)}', style: const TextStyle(fontSize: 12)),
-                        Text('Due Date: ${DateFormat('yyyy-MM-dd').format(_dueDate)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text(
+                          'Issue Date: ${DateFormat('yyyy-MM-dd').format(_issueDate)}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        Text(
+                          'Due Date: ${DateFormat('yyyy-MM-dd').format(_dueDate)}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text('Line Items Overview:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                const Text(
+                  'Line Items Overview:',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.indigo,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 ..._items.map((line) {
                   return Padding(
@@ -1143,8 +1494,17 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('${line.quantity}× ${line.productName}', style: const TextStyle(fontSize: 13)),
-                        Text(formatter.format(line.lineTotal), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(
+                          '${line.quantity}× ${line.productName}',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        Text(
+                          formatter.format(line.lineTotal),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -1154,7 +1514,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Subtotal:', style: TextStyle(fontSize: 13)),
-                    Text(formatter.format(_subTotal), style: const TextStyle(fontSize: 13)),
+                    Text(
+                      formatter.format(_subTotal),
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -1162,7 +1525,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Taxes Total:', style: TextStyle(fontSize: 13)),
-                    Text(formatter.format(_taxTotal), style: const TextStyle(fontSize: 13)),
+                    Text(
+                      formatter.format(_taxTotal),
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1172,14 +1538,21 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     const Expanded(
                       child: Text(
                         'Grand Total Balance Due:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       formatter.format(_grandTotal),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.indigo),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                        color: Colors.indigo,
+                      ),
                     ),
                   ],
                 ),
@@ -1192,7 +1565,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
         // Status Selection
         Card(
           elevation: 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(18.0),
             child: Column(
@@ -1208,16 +1583,50 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   isExpanded: true,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.stars, color: Colors.indigo),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     filled: true,
-                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                    fillColor: theme.brightness == Brightness.light
+                        ? Colors.grey.shade50
+                        : Colors.grey.shade900,
                   ),
                   items: const [
-                    DropdownMenuItem(value: InvoiceStatus.draft, child: Text('Draft (Saved locally for editing)', overflow: TextOverflow.ellipsis)),
-                    DropdownMenuItem(value: InvoiceStatus.sent, child: Text('Sent (Awaiting payment)', overflow: TextOverflow.ellipsis)),
-                    DropdownMenuItem(value: InvoiceStatus.paid, child: Text('Paid (Payment complete)', overflow: TextOverflow.ellipsis)),
-                    DropdownMenuItem(value: InvoiceStatus.partiallyPaid, child: Text('Partially Paid (Installment)', overflow: TextOverflow.ellipsis)),
-                    DropdownMenuItem(value: InvoiceStatus.overdue, child: Text('Overdue (Past payment term)', overflow: TextOverflow.ellipsis)),
+                    DropdownMenuItem(
+                      value: InvoiceStatus.draft,
+                      child: Text(
+                        'Draft (Saved locally for editing)',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: InvoiceStatus.sent,
+                      child: Text(
+                        'Sent (Awaiting payment)',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: InvoiceStatus.paid,
+                      child: Text(
+                        'Paid (Payment complete)',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: InvoiceStatus.partiallyPaid,
+                      child: Text(
+                        'Partially Paid (Installment)',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: InvoiceStatus.overdue,
+                      child: Text(
+                        'Overdue (Past payment term)',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                   onChanged: (val) {
                     if (val != null) setState(() => _status = val);
@@ -1243,9 +1652,14 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
       builder: (ctx) {
         final theme = Theme.of(context);
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 10,
+          ),
           title: Row(
             children: [
               Container(
@@ -1254,7 +1668,11 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   color: Colors.indigo.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.person_add_alt_1, color: Colors.indigo, size: 22),
+                child: const Icon(
+                  Icons.person_add_alt_1,
+                  color: Colors.indigo,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -1263,7 +1681,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                   children: [
                     Text(
                       'Quick Add Client',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
@@ -1290,22 +1711,38 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       controller: nameCtrl,
                       decoration: InputDecoration(
                         labelText: 'Client / Company Name *',
-                        prefixIcon: const Icon(Icons.business, color: Colors.indigo),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(
+                          Icons.business,
+                          color: Colors.indigo,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         filled: true,
-                        fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                        fillColor: theme.brightness == Brightness.light
+                            ? Colors.grey.shade50
+                            : Colors.grey.shade900,
                       ),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Name is required'
+                          : null,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: emailCtrl,
                       decoration: InputDecoration(
                         labelText: 'Email Address',
-                        prefixIcon: const Icon(Icons.email_outlined, color: Colors.indigo),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(
+                          Icons.email_outlined,
+                          color: Colors.indigo,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         filled: true,
-                        fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                        fillColor: theme.brightness == Brightness.light
+                            ? Colors.grey.shade50
+                            : Colors.grey.shade900,
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
@@ -1314,10 +1751,17 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       controller: phoneCtrl,
                       decoration: InputDecoration(
                         labelText: 'Phone Number (WhatsApp)',
-                        prefixIcon: const Icon(Icons.phone_outlined, color: Colors.green),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(
+                          Icons.phone_outlined,
+                          color: Colors.green,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         filled: true,
-                        fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                        fillColor: theme.brightness == Brightness.light
+                            ? Colors.grey.shade50
+                            : Colors.grey.shade900,
                       ),
                       keyboardType: TextInputType.phone,
                     ),
@@ -1326,10 +1770,17 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       controller: addressCtrl,
                       decoration: InputDecoration(
                         labelText: 'Billing Address',
-                        prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.deepOrange),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(
+                          Icons.location_on_outlined,
+                          color: Colors.deepOrange,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         filled: true,
-                        fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                        fillColor: theme.brightness == Brightness.light
+                            ? Colors.grey.shade50
+                            : Colors.grey.shade900,
                       ),
                       maxLines: 2,
                     ),
@@ -1352,8 +1803,13 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigo,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
@@ -1380,16 +1836,29 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
     );
   }
 
-  void _showQuickAddProductDialog(BuildContext context, AppStateProvider state) {
+  void _showQuickAddProductDialog(
+    BuildContext context,
+    AppStateProvider state,
+  ) {
     final nameCtrl = TextEditingController();
-    final skuCtrl = TextEditingController(text: 'PRD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}');
+    final skuCtrl = TextEditingController(
+      text:
+          'PRD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+    );
     final priceCtrl = TextEditingController();
     final taxCtrl = TextEditingController(text: '15.0');
     final descCtrl = TextEditingController();
     String category = 'General';
     bool saveToCatalog = true;
     final formKey = GlobalKey<FormState>();
-    final categories = ['General', 'Services', 'Hardware', 'Software', 'Solar', 'IT'];
+    final categories = [
+      'General',
+      'Services',
+      'Hardware',
+      'Software',
+      'Solar',
+      'IT',
+    ];
 
     showDialog(
       context: context,
@@ -1399,9 +1868,14 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
           final currencySymbol = state.company.currency;
 
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 10,
+            ),
             title: Row(
               children: [
                 Container(
@@ -1410,7 +1884,11 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     color: Colors.indigo.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.add_shopping_cart, color: Colors.indigo, size: 22),
+                  child: const Icon(
+                    Icons.add_shopping_cart,
+                    color: Colors.indigo,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -1419,7 +1897,10 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     children: [
                       Text(
                         'Create Product Item',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
@@ -1447,71 +1928,114 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                         controller: nameCtrl,
                         decoration: InputDecoration(
                           labelText: 'Product / Service Name *',
-                          prefixIcon: const Icon(Icons.inventory_2_outlined, color: Colors.indigo),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(
+                            Icons.inventory_2_outlined,
+                            color: Colors.indigo,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           filled: true,
-                          fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                          fillColor: theme.brightness == Brightness.light
+                              ? Colors.grey.shade50
+                              : Colors.grey.shade900,
                         ),
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Product name is required' : null,
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? 'Product name is required'
+                            : null,
                       ),
                       const SizedBox(height: 14),
-                      const Text(
-                        'Select Category:',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.indigo),
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          ...categories.map((cat) {
-                            final isSelected = category == cat;
-                            return ChoiceChip(
-                              label: Text(cat, style: TextStyle(fontSize: 11, color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color)),
-                              selected: isSelected,
-                              selectedColor: Colors.indigo,
-                              backgroundColor: theme.brightness == Brightness.light ? Colors.grey.shade200 : Colors.grey.shade800,
-                              onSelected: (selected) {
-                                if (selected) setDlgState(() => category = cat);
-                              },
-                            );
-                          }),
-                          ActionChip(
-                            avatar: const Icon(Icons.add, size: 14, color: Colors.indigo),
-                            label: const Text('Custom', style: TextStyle(fontSize: 11, color: Colors.indigo, fontWeight: FontWeight.bold)),
-                            backgroundColor: Colors.indigo.withValues(alpha: 0.1),
-                            onPressed: () async {
-                              final customCtrl = TextEditingController();
-                              final newCat = await showDialog<String>(
-                                context: context,
-                                builder: (c) => AlertDialog(
-                                  title: const Text('New Category'),
-                                  content: TextField(
-                                    controller: customCtrl,
-                                    autofocus: true,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Category Name',
-                                      border: OutlineInputBorder(),
-                                    ),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey(category),
+                        initialValue: category,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Product Category *',
+                          prefixIcon: const Icon(
+                            Icons.category_outlined,
+                            color: Colors.indigo,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          filled: true,
+                          fillColor: theme.brightness == Brightness.light
+                              ? Colors.grey.shade50
+                              : Colors.grey.shade900,
+                        ),
+                        items: [
+                          ...categories.map(
+                            (itemCategory) => DropdownMenuItem(
+                              value: itemCategory,
+                              child: Text(
+                                itemCategory,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          const DropdownMenuItem(
+                            value: '__add_category__',
+                            child: Row(
+                              children: [
+                                Icon(Icons.add, size: 18, color: Colors.indigo),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Add new category',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.indigo,
                                   ),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
-                                    ElevatedButton(
-                                      onPressed: () => Navigator.pop(c, customCtrl.text.trim()),
-                                      child: const Text('Add'),
-                                    ),
-                                  ],
                                 ),
-                              );
-                              if (newCat != null && newCat.isNotEmpty) {
-                                setDlgState(() {
-                                  if (!categories.contains(newCat)) categories.add(newCat);
-                                  category = newCat;
-                                });
-                              }
-                            },
+                              ],
+                            ),
                           ),
                         ],
+                        onChanged: (selectedCategory) async {
+                          if (selectedCategory != '__add_category__') {
+                            if (selectedCategory != null) {
+                              setDlgState(() => category = selectedCategory);
+                            }
+                            return;
+                          }
+
+                          final customController = TextEditingController();
+                          final newCategory = await showDialog<String>(
+                            context: context,
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text('New Category'),
+                              content: TextField(
+                                controller: customController,
+                                autofocus: true,
+                                decoration: const InputDecoration(
+                                  labelText: 'Category Name',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(
+                                    dialogContext,
+                                    customController.text.trim(),
+                                  ),
+                                  child: const Text('Add'),
+                                ),
+                              ],
+                            ),
+                          );
+                          customController.dispose();
+                          if (newCategory != null && newCategory.isNotEmpty) {
+                            setDlgState(() {
+                              if (!categories.contains(newCategory)) {
+                                categories.add(newCategory);
+                              }
+                              category = newCategory;
+                            });
+                          }
+                        },
                       ),
                       const SizedBox(height: 14),
                       Row(
@@ -1519,17 +2043,31 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                           Expanded(
                             child: TextFormField(
                               controller: priceCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               decoration: InputDecoration(
                                 labelText: 'Unit Price ($currencySymbol) *',
-                                prefixIcon: const Icon(Icons.payments_outlined, color: Colors.green),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                prefixIcon: const Icon(
+                                  Icons.payments_outlined,
+                                  color: Colors.green,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                                 filled: true,
-                                fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                                fillColor: theme.brightness == Brightness.light
+                                    ? Colors.grey.shade50
+                                    : Colors.grey.shade900,
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Price is required';
-                                if (double.tryParse(v) == null) return 'Invalid price';
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'Price is required';
+                                }
+                                if (double.tryParse(v) == null) {
+                                  return 'Invalid price';
+                                }
                                 return null;
                               },
                             ),
@@ -1538,13 +2076,23 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                           Expanded(
                             child: TextFormField(
                               controller: taxCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               decoration: InputDecoration(
                                 labelText: 'Tax Rate (%)',
-                                prefixIcon: const Icon(Icons.percent, color: Colors.orange),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                prefixIcon: const Icon(
+                                  Icons.percent,
+                                  color: Colors.orange,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                                 filled: true,
-                                fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                                fillColor: theme.brightness == Brightness.light
+                                    ? Colors.grey.shade50
+                                    : Colors.grey.shade900,
                               ),
                             ),
                           ),
@@ -1555,19 +2103,27 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                         controller: skuCtrl,
                         decoration: InputDecoration(
                           labelText: 'SKU / Code',
-                          prefixIcon: const Icon(Icons.qr_code, color: Colors.blueGrey),
+                          prefixIcon: const Icon(
+                            Icons.qr_code,
+                            color: Colors.blueGrey,
+                          ),
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.refresh, size: 18),
                             tooltip: 'Generate New SKU',
                             onPressed: () {
                               setDlgState(() {
-                                skuCtrl.text = 'PRD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+                                skuCtrl.text =
+                                    'PRD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
                               });
                             },
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           filled: true,
-                          fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                          fillColor: theme.brightness == Brightness.light
+                              ? Colors.grey.shade50
+                              : Colors.grey.shade900,
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -1575,10 +2131,17 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                         controller: descCtrl,
                         decoration: InputDecoration(
                           labelText: 'Description (Optional)',
-                          prefixIcon: const Icon(Icons.notes, color: Colors.blueGrey),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(
+                            Icons.notes,
+                            color: Colors.blueGrey,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           filled: true,
-                          fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                          fillColor: theme.brightness == Brightness.light
+                              ? Colors.grey.shade50
+                              : Colors.grey.shade900,
                         ),
                         maxLines: 2,
                       ),
@@ -1586,17 +2149,33 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.indigo.withValues(alpha: 0.05),
-                          border: Border.all(color: Colors.indigo.withValues(alpha: 0.2)),
+                          border: Border.all(
+                            color: Colors.indigo.withValues(alpha: 0.2),
+                          ),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: SwitchListTile(
-                          value: saveToCatalog,
-                          dense: true,
-                          title: const Text('Save to Permanent Inventory Catalog', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          subtitle: const Text('Keeps product stored in database for future invoices.', style: TextStyle(fontSize: 10)),
-                          onChanged: (val) {
-                            setDlgState(() => saveToCatalog = val);
-                          },
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          clipBehavior: Clip.antiAlias,
+                          child: SwitchListTile(
+                            value: saveToCatalog,
+                            dense: true,
+                            title: const Text(
+                              'Save to Permanent Inventory Catalog',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Keeps product stored in database for future invoices.',
+                              style: TextStyle(fontSize: 10),
+                            ),
+                            onChanged: (val) {
+                              setDlgState(() => saveToCatalog = val);
+                            },
+                          ),
                         ),
                       ),
                     ],
@@ -1618,8 +2197,13 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
@@ -1630,7 +2214,9 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                     id: 'p-${DateTime.now().millisecondsSinceEpoch}',
                     name: nameCtrl.text.trim(),
                     description: descCtrl.text.trim(),
-                    sku: skuCtrl.text.trim().isEmpty ? 'PRD-NEW' : skuCtrl.text.trim(),
+                    sku: skuCtrl.text.trim().isEmpty
+                        ? 'PRD-NEW'
+                        : skuCtrl.text.trim(),
                     unitPrice: price,
                     category: category,
                     taxRate: tax,

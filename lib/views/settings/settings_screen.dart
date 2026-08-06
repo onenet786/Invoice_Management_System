@@ -1,9 +1,11 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
@@ -29,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late String _selectedCurrency;
   late Future<PackageInfo> _packageInfo;
   final LocalAuthentication _localAuth = LocalAuthentication();
+  GoogleSignIn? _googleSignIn;
   bool _checkingBiometrics = false;
   bool _isSyncing = false;
 
@@ -44,6 +47,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _logoController = TextEditingController(text: comp.logo);
     _selectedCurrency = comp.currency;
     _packageInfo = PackageInfo.fromPlatform();
+    if (!kIsWeb) {
+      _googleSignIn = GoogleSignIn(scopes: const ['email']);
+    }
   }
 
   @override
@@ -299,13 +305,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     controller: _taxIdController,
                     enabled: canEdit,
                     decoration: const InputDecoration(
-                      labelText: 'Company Tax ID (GST/VAT)',
+                      labelText: 'Company Tax ID (GST/VAT) (Optional)',
                       prefixIcon: Icon(Icons.description_outlined),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Tax ID is required'
-                        : null,
                   );
                   final currencyOptions = <String, String>{
                     '\$': 'USD (\$)',
@@ -528,6 +531,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
             ),
             const Divider(height: 32),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                Icons.tag_outlined,
+                color: theme.colorScheme.primary,
+              ),
+              title: const Text('Invoice Number Format'),
+              subtitle: Text(
+                '${state.invoiceNumberFormat}\nUse {YYYY}, {YY}, {MM}, and one sequence token such as {NNNN}.',
+              ),
+              isThreeLine: true,
+              trailing: OutlinedButton(
+                onPressed: state.isAdmin
+                    ? () => _showInvoiceNumberFormatDialog(context, state)
+                    : null,
+                child: const Text('Edit'),
+              ),
+            ),
+            const Divider(height: 32),
             Row(
               children: [
                 Expanded(
@@ -536,7 +558,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       const Text(
                         'Invoice PDF Template',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                       Text(
                         'Active: ${state.pdfTemplate}',
@@ -552,7 +577,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.indigo,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   onPressed: () => _showTemplatePreviewModal(context, state),
                 ),
@@ -604,11 +632,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(10),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? color.withValues(alpha: 0.12)
-                            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                            : theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.4),
                         border: Border.all(
                           color: isSelected ? color : theme.dividerColor,
                           width: isSelected ? 2 : 1,
@@ -634,14 +666,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Text(
                                 name,
                                 style: TextStyle(
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
                                   color: isSelected ? color : null,
                                   fontSize: 13,
                                 ),
                               ),
                               Text(
                                 tag,
-                                style: TextStyle(fontSize: 10, color: theme.hintColor),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: theme.hintColor,
+                                ),
                               ),
                             ],
                           ),
@@ -660,6 +697,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showInvoiceNumberFormatDialog(
+    BuildContext context,
+    AppStateProvider state,
+  ) async {
+    final controller = TextEditingController(text: state.invoiceNumberFormat);
+    String? errorText;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Invoice Number Format'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Format',
+              hintText: 'INV-{YYYY}-{NNNN}',
+              errorText: errorText,
+              helperText: 'Example: SALE-{YY}-{MM}-{NNNN}',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final format = controller.text.trim();
+                if (RegExp(r'\{N{1,6}\}').allMatches(format).length != 1) {
+                  setDialogState(() {
+                    errorText =
+                        'Include exactly one sequence token, for example {NNNN}.';
+                  });
+                  return;
+                }
+                await state.setInvoiceNumberFormat(format);
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
   }
 
   void _showTemplatePreviewModal(BuildContext context, AppStateProvider state) {
@@ -682,7 +767,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 10),
                       Text(
                         'Template Preview: ${state.pdfTemplate}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -935,7 +1023,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.cloud_sync, color: Colors.blue.shade700, size: 24),
+                  child: Icon(
+                    Icons.cloud_sync,
+                    color: Colors.blue.shade700,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -944,7 +1036,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       const Text(
                         'Google Drive Cloud Backup & Data Sync',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Text(
                         'Securely backup and restore database snapshots to your Google Drive.',
@@ -971,7 +1066,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Expanded(
                       child: Text(
                         'Google Drive is not linked. Connect an account to enable cloud data protection and automated backups.',
-                        style: TextStyle(fontSize: 12, color: theme.textTheme.bodyMedium?.color),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.textTheme.bodyMedium?.color,
+                        ),
                       ),
                     ),
                   ],
@@ -987,7 +1085,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade700,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
                 onPressed: () => _showConnectDriveDialog(context, state),
               ),
@@ -996,7 +1097,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.blue.withValues(alpha: 0.05),
-                  border: Border.all(color: Colors.blue.withValues(alpha: 0.25)),
+                  border: Border.all(
+                    color: Colors.blue.withValues(alpha: 0.25),
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -1022,21 +1125,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 account,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.withValues(alpha: 0.15),
+                                      color: Colors.green.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: const Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.verified, color: Colors.green, size: 12),
+                                        Icon(
+                                          Icons.verified,
+                                          color: Colors.green,
+                                          size: 12,
+                                        ),
                                         SizedBox(width: 3),
                                         Text(
                                           'VERIFIED',
@@ -1056,7 +1171,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 'Last Cloud Sync: $lastSyncStr',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 11, color: theme.hintColor),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: theme.hintColor,
+                                ),
                               ),
                             ],
                           ),
@@ -1066,13 +1184,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red,
                             side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                           ),
                           onPressed: () async {
+                            await _googleSignIn?.signOut();
                             await backup.unlinkGoogleDriveAccount();
                             setState(() {});
                           },
-                          child: const Text('Disconnect', style: TextStyle(fontSize: 11)),
+                          child: const Text(
+                            'Disconnect',
+                            style: TextStyle(fontSize: 11),
+                          ),
                         ),
                       ],
                     ),
@@ -1081,14 +1206,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.cloud_done_outlined, size: 16, color: Colors.blue),
+                        const Icon(
+                          Icons.cloud_done_outlined,
+                          size: 16,
+                          color: Colors.blue,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'Google Cloud Drive Storage Active (15 GB Quota Authorized)',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 11, color: theme.hintColor),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: theme.hintColor,
+                            ),
                           ),
                         ),
                       ],
@@ -1106,7 +1238,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.cloud_upload_outlined, size: 18),
                     label: Text(_isSyncing ? 'Syncing...' : 'Back Up Now'),
@@ -1114,7 +1249,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       backgroundColor: Colors.indigo,
                       foregroundColor: Colors.white,
                     ),
-                    onPressed: _isSyncing ? null : () => _performDriveBackup(state),
+                    onPressed: _isSyncing
+                        ? null
+                        : () => _performDriveBackup(state),
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.cloud_download_outlined, size: 18),
@@ -1127,7 +1264,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Auto-Backup on Change'),
-                subtitle: const Text('Automatically upload database snapshots when invoice data updates.'),
+                subtitle: const Text(
+                  'Automatically upload database snapshots when invoice data updates.',
+                ),
                 value: backup.autoBackupEnabled,
                 onChanged: (val) async {
                   await backup.setAutoBackup(val);
@@ -1138,7 +1277,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Divider(height: 32),
             Text(
               'Local Backup & Restore',
-              style: TextStyle(fontWeight: FontWeight.bold, color: theme.hintColor, fontSize: 13),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: theme.hintColor,
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -1152,7 +1295,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final jsonStr = await backup.generateBackupJson();
                     final bytes = Uint8List.fromList(utf8.encode(jsonStr));
                     final now = DateTime.now();
-                    final filename = 'invoicey_backup_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.json';
+                    final filename =
+                        'invoicey_backup_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.json';
                     await Printing.sharePdf(bytes: bytes, filename: filename);
                   },
                 ),
@@ -1167,7 +1311,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (mounted) {
                         messenger.showSnackBar(
                           SnackBar(
-                            content: Text('Successfully restored database from "$filename".'),
+                            content: Text(
+                              'Successfully restored database from "$filename".',
+                            ),
                             backgroundColor: Colors.green,
                           ),
                         );
@@ -1176,7 +1322,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     } else if (mounted) {
                       messenger.showSnackBar(
                         const SnackBar(
-                          content: Text('Import cancelled or invalid backup file format.'),
+                          content: Text(
+                            'Import cancelled or invalid backup file format.',
+                          ),
                           backgroundColor: Colors.orange,
                         ),
                       );
@@ -1192,9 +1340,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showConnectDriveDialog(BuildContext context, AppStateProvider state) {
-    String selectedEmail = 'admin.invoicey@gmail.com';
-    final customEmailController = TextEditingController();
-    bool isCustom = false;
+    String selectedEmail = '';
     int currentStep = 1;
 
     showDialog(
@@ -1202,15 +1348,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) {
-          final presetEmails = [
-            {'email': 'admin.invoicey@gmail.com', 'name': 'Company Admin Account', 'avatar': 'A', 'color': Colors.blue},
-            {'email': 'john.doe@gmail.com', 'name': 'John Doe (Personal Drive)', 'avatar': 'J', 'color': Colors.deepOrange},
-            {'email': 'finance.dept@gmail.com', 'name': 'Finance Department', 'avatar': 'F', 'color': Colors.teal},
-          ];
-
           if (currentStep == 1) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Row(
                 children: [
                   Container(
@@ -1236,8 +1378,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Choose an Account', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        Text('to continue to Invoicey Cloud Sync', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text(
+                          'Choose an Account',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'to continue to Invoicey Cloud Sync',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
@@ -1250,67 +1401,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Divider(),
-                      ...presetEmails.map((acc) {
-                        final email = acc['email'] as String;
-                        final name = acc['name'] as String;
-                        final avatar = acc['avatar'] as String;
-                        final color = acc['color'] as Color;
-                        final isThisSelected = !isCustom && selectedEmail == email;
-
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          tileColor: isThisSelected ? Colors.blue.withValues(alpha: 0.1) : null,
-                          leading: CircleAvatar(
-                            backgroundColor: color,
-                            foregroundColor: Colors.white,
-                            child: Text(avatar, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                          title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          subtitle: Text(email, style: const TextStyle(fontSize: 12)),
-                          trailing: isThisSelected ? const Icon(Icons.check_circle, color: Colors.blue) : null,
-                          onTap: () {
-                            setDialogState(() {
-                              isCustom = false;
-                              selectedEmail = email;
-                            });
-                          },
-                        );
-                      }),
-                      const Divider(),
                       ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                        ),
                         leading: const CircleAvatar(
-                          backgroundColor: Colors.grey,
-                          child: Icon(Icons.person_add_alt_1, color: Colors.white, size: 20),
-                        ),
-                        title: const Text('Use another email address', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                        subtitle: isCustom ? const Text('Enter custom Google email below', style: TextStyle(fontSize: 11)) : null,
-                        trailing: isCustom ? const Icon(Icons.check_circle, color: Colors.blue) : null,
-                        onTap: () {
-                          setDialogState(() {
-                            isCustom = true;
-                          });
-                        },
-                      ),
-                      if (isCustom) ...[
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: customEmailController,
-                          keyboardType: TextInputType.emailAddress,
-                          autofocus: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Enter Google Account Email',
-                            prefixIcon: Icon(Icons.email_outlined),
-                            hintText: 'yourname@gmail.com',
+                          backgroundColor: Colors.blue,
+                          child: Icon(
+                            Icons.account_circle_outlined,
+                            color: Colors.white,
+                            size: 20,
                           ),
-                          onChanged: (val) {
-                            setDialogState(() {
-                              selectedEmail = val.trim();
-                            });
-                          },
                         ),
-                      ],
+                        title: const Text(
+                          'Choose Google account',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: Text(
+                          selectedEmail.isEmpty
+                              ? kIsWeb
+                                    ? 'Google account selection is available in the mobile app.'
+                                    : 'Opens the Google account picker on this device.'
+                              : selectedEmail,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: selectedEmail.isNotEmpty
+                            ? const Icon(Icons.check_circle, color: Colors.blue)
+                            : null,
+                        onTap: kIsWeb
+                            ? null
+                            : () async {
+                                try {
+                                  final account = await _googleSignIn?.signIn();
+                                  if (account == null) return;
+                                  setDialogState(
+                                    () => selectedEmail = account.email,
+                                  );
+                                } on PlatformException catch (error) {
+                                  if (!dialogCtx.mounted) return;
+                                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Google sign-in needs OAuth setup for this app. Add google-services.json, then try again. (${error.code})',
+                                      ),
+                                    ),
+                                  );
+                                } catch (error) {
+                                  if (!dialogCtx.mounted) return;
+                                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Google sign-in failed: $error',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                      ),
                     ],
                   ),
                 ),
@@ -1325,7 +1475,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     backgroundColor: Colors.blue.shade700,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: selectedEmail.isEmpty || !selectedEmail.contains('@')
+                  onPressed:
+                      selectedEmail.isEmpty || !selectedEmail.contains('@')
                       ? null
                       : () {
                           setDialogState(() {
@@ -1340,7 +1491,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           if (currentStep == 2) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Row(
                 children: [
                   Icon(Icons.security, color: Colors.blue.shade700),
@@ -1365,36 +1518,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const CircleAvatar(
                             radius: 16,
                             backgroundColor: Colors.blue,
-                            child: Icon(Icons.person, color: Colors.white, size: 18),
+                            child: Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Signing in as:', style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
-                                Text(selectedEmail, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text(
+                                  'Signing in as:',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                Text(
+                                  selectedEmail,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.verified, color: Colors.blue, size: 18),
+                          const Icon(
+                            Icons.verified,
+                            color: Colors.blue,
+                            size: 18,
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Invoicey Management System requests access to your Google Account:'),
+                    const Text(
+                      'Invoicey Management System requests access to your Google Account:',
+                    ),
                     const SizedBox(height: 12),
                     const ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(Icons.add_to_drive, color: Colors.blue),
-                      title: Text('Manage Google Drive Files', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      subtitle: Text('Create, read, and update invoice backup files created by Invoicey.', style: TextStyle(fontSize: 11)),
+                      title: Text(
+                        'Manage Google Drive Files',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Create, read, and update invoice backup files created by Invoicey.',
+                        style: TextStyle(fontSize: 11),
+                      ),
                     ),
                     const ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.folder_zip_outlined, color: Colors.blue),
-                      title: Text('App Data Directory Access', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      subtitle: Text('Save encrypted snapshots to private Google Drive AppData.', style: TextStyle(fontSize: 11)),
+                      leading: Icon(
+                        Icons.folder_zip_outlined,
+                        color: Colors.blue,
+                      ),
+                      title: Text(
+                        'App Data Directory Access',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Save encrypted snapshots to private Google Drive AppData.',
+                        style: TextStyle(fontSize: 11),
+                      ),
                     ),
                   ],
                 ),
@@ -1422,7 +1618,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     });
 
                     await Future.delayed(const Duration(milliseconds: 1000));
-                    await state.backupService.linkGoogleDriveAccount(selectedEmail);
+                    await state.backupService.linkGoogleDriveAccount(
+                      selectedEmail,
+                    );
 
                     if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
                     if (mounted) {
@@ -1431,9 +1629,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         SnackBar(
                           content: Row(
                             children: [
-                              const Icon(Icons.verified_user, color: Colors.white),
+                              const Icon(
+                                Icons.verified_user,
+                                color: Colors.white,
+                              ),
                               const SizedBox(width: 10),
-                              Text('Google Drive verified and connected for $selectedEmail!'),
+                              Text(
+                                'Google Drive verified and connected for $selectedEmail!',
+                              ),
                             ],
                           ),
                           backgroundColor: Colors.green.shade700,
@@ -1448,7 +1651,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           }
 
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             content: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
               child: Column(
@@ -1456,9 +1661,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   const CircularProgressIndicator(strokeWidth: 3),
                   const SizedBox(height: 20),
-                  const Text('Verifying OAuth Access Token...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const Text(
+                    'Verifying OAuth Access Token...',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                   const SizedBox(height: 6),
-                  Text('Exchanging tokens with Google Auth API for $selectedEmail', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(
+                    'Exchanging tokens with Google Auth API for $selectedEmail',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                 ],
               ),
             ),
@@ -1510,7 +1722,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: snapshots.isEmpty
               ? const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Text('No cloud backups found on Google Drive yet. Tap "Back Up Now" to create one.'),
+                  child: Text(
+                    'No cloud backups found on Google Drive yet. Tap "Back Up Now" to create one.',
+                  ),
                 )
               : ListView.separated(
                   shrinkWrap: true,
@@ -1528,11 +1742,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(Icons.backup_outlined, color: Colors.blue.shade700),
+                        child: Icon(
+                          Icons.backup_outlined,
+                          color: Colors.blue.shade700,
+                        ),
                       ),
                       title: Text(
                         item.fileName,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                       subtitle: Text(
                         'Date: $dateStr · ${item.invoiceCount} Invoices · ${(item.sizeBytes / 1024).toStringAsFixed(1)} KB',
@@ -1542,24 +1762,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.indigo,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                         onPressed: () async {
                           Navigator.of(ctx).pop();
-                          final jsonStr = await state.backupService.generateBackupJson();
-                          await state.backupService.restoreFromBackupJson(jsonStr);
+                          final jsonStr = await state.backupService
+                              .generateBackupJson();
+                          await state.backupService.restoreFromBackupJson(
+                            jsonStr,
+                          );
                           await state.reloadAllData();
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Restored dataset from Google Drive snapshot "${item.fileName}".'),
+                                content: Text(
+                                  'Restored dataset from Google Drive snapshot "${item.fileName}".',
+                                ),
                                 backgroundColor: Colors.green,
                               ),
                             );
                           }
                           setState(() {});
                         },
-                        child: const Text('Restore', style: TextStyle(fontSize: 12)),
+                        child: const Text(
+                          'Restore',
+                          style: TextStyle(fontSize: 12),
+                        ),
                       ),
                     );
                   },

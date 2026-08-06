@@ -2,6 +2,8 @@ import 'invoice_item_model.dart';
 
 enum InvoiceStatus { draft, sent, paid, overdue, partiallyPaid }
 
+enum InvoiceDocumentType { invoice, quote }
+
 class InvoiceModel {
   final String id;
   final String invoiceNumber;
@@ -14,6 +16,8 @@ class InvoiceModel {
   final double subTotal;
   final double taxTotal;
   final double grandTotal;
+  final InvoiceDocumentType documentType;
+  final String? convertedInvoiceId;
 
   InvoiceModel({
     required this.id,
@@ -27,6 +31,8 @@ class InvoiceModel {
     required this.subTotal,
     required this.taxTotal,
     required this.grandTotal,
+    this.documentType = InvoiceDocumentType.invoice,
+    this.convertedInvoiceId,
   });
 
   Map<String, dynamic> toJson() {
@@ -42,6 +48,8 @@ class InvoiceModel {
       'subTotal': subTotal,
       'taxTotal': taxTotal,
       'grandTotal': grandTotal,
+      'documentType': documentType.name,
+      'convertedInvoiceId': convertedInvoiceId,
     };
   }
 
@@ -66,6 +74,11 @@ class InvoiceModel {
       subTotal: (json['subTotal'] as num?)?.toDouble() ?? 0.0,
       taxTotal: (json['taxTotal'] as num?)?.toDouble() ?? 0.0,
       grandTotal: (json['grandTotal'] as num?)?.toDouble() ?? 0.0,
+      documentType: InvoiceDocumentType.values.firstWhere(
+        (type) => type.name == json['documentType'],
+        orElse: () => InvoiceDocumentType.invoice,
+      ),
+      convertedInvoiceId: json['convertedInvoiceId'] as String?,
     );
   }
 
@@ -81,6 +94,8 @@ class InvoiceModel {
     double? subTotal,
     double? taxTotal,
     double? grandTotal,
+    InvoiceDocumentType? documentType,
+    String? convertedInvoiceId,
   }) {
     return InvoiceModel(
       id: id ?? this.id,
@@ -94,6 +109,8 @@ class InvoiceModel {
       subTotal: subTotal ?? this.subTotal,
       taxTotal: taxTotal ?? this.taxTotal,
       grandTotal: grandTotal ?? this.grandTotal,
+      documentType: documentType ?? this.documentType,
+      convertedInvoiceId: convertedInvoiceId ?? this.convertedInvoiceId,
     );
   }
 }

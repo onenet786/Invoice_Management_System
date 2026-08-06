@@ -216,6 +216,17 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                       icon: const Icon(Icons.add_card),
                       label: const Text('Create Invoice'),
                     ),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const InvoiceWizardScreen(
+                            documentType: InvoiceDocumentType.quote,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.request_quote_outlined),
+                      label: const Text('Create Quote'),
+                    ),
                   ],
                 );
                 if (constraints.maxWidth < 700) {
@@ -405,6 +416,21 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16,
                                             color: Colors.indigo,
+                                          ),
+                                        ),
+                                        Text(
+                                          inv.documentType ==
+                                                  InvoiceDocumentType.quote
+                                              ? 'QUOTE'
+                                              : 'INVOICE',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color:
+                                                inv.documentType ==
+                                                    InvoiceDocumentType.quote
+                                                ? Colors.deepPurple
+                                                : theme.hintColor,
                                           ),
                                         ),
                                         const SizedBox(height: 4),

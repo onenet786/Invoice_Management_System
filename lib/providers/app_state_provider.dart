@@ -40,6 +40,9 @@ class AppStateProvider extends ChangeNotifier {
   String _pdfTemplate = 'Classic';
   String get pdfTemplate => _pdfTemplate;
 
+  String _invoiceNumberFormat = StorageService.defaultInvoiceNumberFormat;
+  String get invoiceNumberFormat => _invoiceNumberFormat;
+
   AppStateProvider(this._storage)
     : _company = CompanyModel(
         name: 'My Solar & IT Corp',
@@ -71,6 +74,7 @@ class AppStateProvider extends ChangeNotifier {
     _invoices = await _storage.getInvoices();
     _biometricEnabled = _storage.biometricEnabled;
     _pdfTemplate = _storage.pdfTemplate;
+    _invoiceNumberFormat = _storage.invoiceNumberFormat;
 
     // Check overdue invoices dynamically on load
     await _checkOverdueInvoices();
@@ -241,6 +245,14 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setInvoiceNumberFormat(String format) async {
+    final normalizedFormat = format.trim();
+    if (!isAdmin || !_isValidInvoiceNumberFormat(normalizedFormat)) return;
+    _invoiceNumberFormat = normalizedFormat;
+    await _storage.saveInvoiceNumberFormat(normalizedFormat);
+    notifyListeners();
+  }
+
   // Company management
   Future<void> updateCompany(CompanyModel updatedCompany) async {
     if (!isAdmin) return; // Only Admin can change company profile
@@ -372,26 +384,101 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<InvoiceModel?> convertQuoteToInvoice(InvoiceModel quote) async {
+    if (!canWrite ||
+        quote.documentType != InvoiceDocumentType.quote ||
+        quote.convertedInvoiceId != null) {
+      return null;
+    }
+
+    final now = DateTime.now();
+    final invoice = InvoiceModel(
+      id: 'inv-${now.millisecondsSinceEpoch}',
+      invoiceNumber: generateNextInvoiceNumber(),
+      clientId: quote.clientId,
+      issueDate: now,
+      dueDate: now.add(const Duration(days: 30)),
+      status: InvoiceStatus.draft,
+      notes: quote.notes,
+      items: quote.items,
+      subTotal: quote.subTotal,
+      taxTotal: quote.taxTotal,
+      grandTotal: quote.grandTotal,
+    );
+    final quoteIndex = _invoices.indexWhere((item) => item.id == quote.id);
+    if (quoteIndex == -1) return null;
+
+    _invoices[quoteIndex] = quote.copyWith(convertedInvoiceId: invoice.id);
+    _invoices.add(invoice);
+    await _storage.saveInvoices(_invoices);
+    await _triggerAutoBackupIfEnabled();
+    notifyListeners();
+    return invoice;
+  }
+
+  String generateNextQuoteNumber() {
+    final year = DateTime.now().year;
+    final expression = RegExp(
+      '^QTE-$year-(\\d+)'
+      r'$',
+    );
+    var maxSequence = 0;
+    for (final document in _invoices) {
+      final match = expression.firstMatch(document.invoiceNumber);
+      final sequence = match == null ? null : int.tryParse(match.group(1)!);
+      if (sequence != null && sequence > maxSequence) maxSequence = sequence;
+    }
+    return 'QTE-$year-${(maxSequence + 1).toString().padLeft(4, '0')}';
+  }
+
+  bool _isValidInvoiceNumberFormat(String format) {
+    return RegExp(r'\{N{1,6}\}').allMatches(format).length == 1;
+  }
+
+  String _replaceDateTokens(String value, DateTime date) {
+    return value
+        .replaceAll('{YYYY}', date.year.toString())
+        .replaceAll('{YY}', (date.year % 100).toString().padLeft(2, '0'))
+        .replaceAll('{MM}', date.month.toString().padLeft(2, '0'));
+  }
+
+  String _escapeRegExp(String value) => value.replaceAllMapped(
+    RegExp(r'[\\^\$.*+?()[\]{}|]'),
+    (match) => '\\${match[0]}',
+  );
+
   // Sequential Invoice Number Generator
   String generateNextInvoiceNumber() {
-    final year = DateTime.now().year;
-    final prefix = 'INV-$year-';
+    final now = DateTime.now();
+    final sequenceToken = RegExp(
+      r'\{N{1,6}\}',
+    ).firstMatch(_invoiceNumberFormat);
+    if (sequenceToken == null) return 'INV-${now.year}-0001';
+
+    final prefix = _replaceDateTokens(
+      _invoiceNumberFormat.substring(0, sequenceToken.start),
+      now,
+    );
+    final suffix = _replaceDateTokens(
+      _invoiceNumberFormat.substring(sequenceToken.end),
+      now,
+    );
+    final sequenceWidth = sequenceToken.group(0)!.length - 2;
+    final expression = RegExp(
+      '^${_escapeRegExp(prefix)}(\\d+)${_escapeRegExp(suffix)}\$',
+    );
     int maxSeq = 0;
 
-    for (var inv in _invoices) {
-      if (inv.invoiceNumber.startsWith(prefix)) {
-        final parts = inv.invoiceNumber.split('-');
-        if (parts.length == 3) {
-          final seqNum = int.tryParse(parts[2]);
-          if (seqNum != null && seqNum > maxSeq) {
-            maxSeq = seqNum;
-          }
-        }
+    for (final invoice in _invoices) {
+      final match = expression.firstMatch(invoice.invoiceNumber);
+      final sequence = match == null ? null : int.tryParse(match.group(1)!);
+      if (sequence != null && sequence > maxSeq) {
+        maxSeq = sequence;
       }
     }
 
     final nextSeq = maxSeq + 1;
-    return '$prefix${nextSeq.toString().padLeft(4, '0')}';
+    return '$prefix${nextSeq.toString().padLeft(sequenceWidth, '0')}$suffix';
   }
 
   // Analytics helper metrics

@@ -216,7 +216,7 @@ class _ClientListScreenState extends State<ClientListScreen> {
                                 fontSize: 16,
                               ),
                             ),
-                             subtitle: Padding(
+                            subtitle: Padding(
                               padding: const EdgeInsets.only(top: 6.0),
                               child: Wrap(
                                 spacing: 16,
@@ -454,7 +454,11 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
               color: Colors.indigo.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(isEdit ? Icons.edit_note : Icons.person_add_alt_1, color: Colors.indigo, size: 22),
+            child: Icon(
+              isEdit ? Icons.edit_note : Icons.person_add_alt_1,
+              color: Colors.indigo,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -463,11 +467,16 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
               children: [
                 Text(
                   isEdit ? 'Edit Client Record' : 'Register New Client',
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  isEdit ? 'Update billing details & contacts' : 'Create new customer entry in database',
+                  isEdit
+                      ? 'Update billing details & contacts'
+                      : 'Create new customer entry in database',
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -490,10 +499,17 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
                   controller: _nameController,
                   decoration: InputDecoration(
                     labelText: 'Client Company / Full Name *',
-                    prefixIcon: const Icon(Icons.business, color: Colors.indigo),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(
+                      Icons.business,
+                      color: Colors.indigo,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     filled: true,
-                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                    fillColor: theme.brightness == Brightness.light
+                        ? Colors.grey.shade50
+                        : Colors.grey.shade900,
                   ),
                   validator: (v) => v == null || v.trim().isEmpty
                       ? 'Company/Client name is required'
@@ -504,17 +520,23 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Billing Email Address *',
-                    prefixIcon: const Icon(Icons.email_outlined, color: Colors.indigo),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    labelText: 'Billing Email Address (Optional)',
+                    prefixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: Colors.indigo,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     filled: true,
-                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                    fillColor: theme.brightness == Brightness.light
+                        ? Colors.grey.shade50
+                        : Colors.grey.shade900,
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Email is required';
-                    }
-                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) {
+                    final email = v?.trim() ?? '';
+                    if (email.isNotEmpty &&
+                        !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
                       return 'Enter a valid email address';
                     }
                     return null;
@@ -526,10 +548,17 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
                     labelText: 'Contact Phone Number (WhatsApp)',
-                    prefixIcon: const Icon(Icons.phone_outlined, color: Colors.green),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(
+                      Icons.phone_outlined,
+                      color: Colors.green,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     filled: true,
-                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                    fillColor: theme.brightness == Brightness.light
+                        ? Colors.grey.shade50
+                        : Colors.grey.shade900,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -537,10 +566,17 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
                   controller: _billingController,
                   decoration: InputDecoration(
                     labelText: 'Billing Address *',
-                    prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.deepOrange),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(
+                      Icons.location_on_outlined,
+                      color: Colors.deepOrange,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     filled: true,
-                    fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                    fillColor: theme.brightness == Brightness.light
+                        ? Colors.grey.shade50
+                        : Colors.grey.shade900,
                   ),
                   maxLines: 2,
                   validator: (v) => v == null || v.trim().isEmpty
@@ -551,24 +587,34 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.indigo.withValues(alpha: 0.05),
-                    border: Border.all(color: Colors.indigo.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: Colors.indigo.withValues(alpha: 0.2),
+                    ),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: CheckboxListTile(
-                    title: const Text(
-                      'Shipping Address same as Billing Address',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    clipBehavior: Clip.antiAlias,
+                    child: CheckboxListTile(
+                      title: const Text(
+                        'Shipping Address same as Billing Address',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      value: _sameAddress,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _sameAddress = val;
+                          });
+                        }
+                      },
                     ),
-                    value: _sameAddress,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _sameAddress = val;
-                        });
-                      }
-                    },
                   ),
                 ),
                 if (!_sameAddress) ...[
@@ -577,10 +623,17 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
                     controller: _shippingController,
                     decoration: InputDecoration(
                       labelText: 'Shipping Address',
-                      prefixIcon: const Icon(Icons.local_shipping_outlined, color: Colors.blue),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(
+                        Icons.local_shipping_outlined,
+                        color: Colors.blue,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       filled: true,
-                      fillColor: theme.brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900,
+                      fillColor: theme.brightness == Brightness.light
+                          ? Colors.grey.shade50
+                          : Colors.grey.shade900,
                     ),
                     maxLines: 2,
                   ),
@@ -605,7 +658,9 @@ class _ClientFormDialogState extends State<_ClientFormDialog> {
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
           onPressed: _save,
         ),

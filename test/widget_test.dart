@@ -6,6 +6,8 @@ import 'package:invoice_managment_system/main.dart';
 import 'package:invoice_managment_system/services/storage_service.dart';
 import 'package:invoice_managment_system/providers/app_state_provider.dart';
 import 'package:invoice_managment_system/views/settings/settings_screen.dart';
+import 'package:invoice_managment_system/models/invoice_item_model.dart';
+import 'package:invoice_managment_system/models/invoice_model.dart';
 
 void main() {
   testWidgets('fresh install displays onboarding choices', (
@@ -131,5 +133,75 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('SAR (Custom)'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  test(
+    'custom invoice number format is persisted and generates sequentially',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'invoice_first_run': false,
+        'invoice_users':
+            '[{"id":"u-1","name":"Admin","email":"admin@test.com","password":"secret","role":"admin"}]',
+        'invoice_invoices': '[]',
+      });
+      final storageService = await StorageService.init();
+      final provider = AppStateProvider(storageService);
+      await provider.loginWithBiometrics();
+      await provider.setInvoiceNumberFormat('SALE-{YY}-{MM}-{NNN}');
+
+      final now = DateTime.now();
+      final expectedPrefix =
+          'SALE-${(now.year % 100).toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-';
+      expect(provider.invoiceNumberFormat, 'SALE-{YY}-{MM}-{NNN}');
+      expect(provider.generateNextInvoiceNumber(), '${expectedPrefix}001');
+    },
+  );
+
+  test('approved quote creates a new draft invoice', () async {
+    SharedPreferences.setMockInitialValues({
+      'invoice_first_run': false,
+      'invoice_users':
+          '[{"id":"u-1","name":"Admin","email":"admin@test.com","password":"secret","role":"admin"}]',
+      'invoice_invoices': '[]',
+    });
+    final provider = AppStateProvider(await StorageService.init());
+    await provider.loginWithBiometrics();
+    final quote = InvoiceModel(
+      id: 'quote-1',
+      invoiceNumber: 'QTE-2026-0001',
+      clientId: 'client-1',
+      issueDate: DateTime(2026, 1, 1),
+      dueDate: DateTime(2026, 1, 31),
+      status: InvoiceStatus.sent,
+      notes: 'Approved scope',
+      items: [
+        InvoiceItemModel(
+          id: 'item-1',
+          productId: 'product-1',
+          productName: 'Service',
+          quantity: 1,
+          unitPrice: 100,
+          taxRate: 0,
+        ),
+      ],
+      subTotal: 100,
+      taxTotal: 0,
+      grandTotal: 100,
+      documentType: InvoiceDocumentType.quote,
+    );
+    await provider.addInvoice(quote);
+
+    final invoice = await provider.convertQuoteToInvoice(quote);
+
+    expect(invoice, isNotNull);
+    expect(invoice!.documentType, InvoiceDocumentType.invoice);
+    expect(invoice.status, InvoiceStatus.draft);
+    expect(provider.invoices, hasLength(2));
+    expect(
+      provider.invoices
+          .firstWhere((document) => document.id == quote.id)
+          .convertedInvoiceId,
+      invoice.id,
+    );
   });
 }
