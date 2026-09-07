@@ -6,11 +6,14 @@ import '../models/product_model.dart';
 import '../models/invoice_model.dart';
 import '../services/storage_service.dart';
 import '../services/backup_service.dart';
+import '../services/remote_sync_service.dart';
 
 class AppStateProvider extends ChangeNotifier {
   final StorageService _storage;
   late final BackupService _backupService;
   BackupService get backupService => _backupService;
+  late final RemoteSyncService _remoteSyncService;
+  RemoteSyncService get remoteSyncService => _remoteSyncService;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -52,6 +55,7 @@ class AppStateProvider extends ChangeNotifier {
         currency: '\$',
       ) {
     _backupService = BackupService(_storage, _storage.prefs);
+    _remoteSyncService = RemoteSyncService(_storage, _storage.prefs);
     _loadAllData();
   }
 
@@ -60,6 +64,13 @@ class AppStateProvider extends ChangeNotifier {
   Future<void> _triggerAutoBackupIfEnabled() async {
     if (_backupService.isDriveLinked && _backupService.autoBackupEnabled) {
       await _backupService.performGoogleDriveSync();
+    }
+    if (_remoteSyncService.isConnected) {
+      try {
+        await _remoteSyncService.uploadWorkspace();
+      } on RemoteSyncException {
+        // The user can resolve a version conflict from the sync controls.
+      }
     }
   }
 

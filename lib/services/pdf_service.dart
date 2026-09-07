@@ -77,11 +77,13 @@ class PdfService {
                           company.address,
                           style: const pw.TextStyle(fontSize: 10),
                         ),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          "Tax ID: ${company.taxId}",
-                          style: const pw.TextStyle(fontSize: 10),
-                        ),
+                        if (company.taxId.trim().isNotEmpty) ...[
+                          pw.SizedBox(height: 2),
+                          pw.Text(
+                            "Tax ID: ${company.taxId}",
+                            style: const pw.TextStyle(fontSize: 10),
+                          ),
+                        ],
                       ],
                     ),
                     pw.Column(

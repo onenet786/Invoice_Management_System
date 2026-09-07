@@ -1396,13 +1396,14 @@ class _InvoiceWizardScreenState extends State<InvoiceWizardScreen> {
                             color: Colors.indigo,
                           ),
                         ),
-                        Text(
-                          'Tax ID: ${state.company.taxId}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.hintColor,
+                        if (state.company.taxId.trim().isNotEmpty)
+                          Text(
+                            'Tax ID: ${state.company.taxId}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.hintColor,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                     Container(

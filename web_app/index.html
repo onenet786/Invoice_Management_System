@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoicey — Enterprise Invoice & Billing Platform</title>
+  <meta name="description" content="Production-ready web application for invoice and quote lifecycle management, dynamic line items, multi-template PDF rendering, OCR scanning, and client billing." />
+  
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- APP SHELL -->
+  <div id="app-shell">
+
+    <!-- SIDEBAR -->
+    <aside class="app-sidebar">
+      <div>
+        <div class="brand-section">
+          <div class="brand-logo">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14l4-4h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H6.83L5 16.83V5h14v10zM7 7h10v2H7zm0 3h7v2H7z"/></svg>
+          </div>
+          <div>
+            <div class="brand-title">INVOICEY</div>
+            <div class="brand-subtitle">ENTERPRISE EDITION</div>
+          </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="nav-menu">
+          <button class="nav-link active" data-tab="dashboard" onclick="App.switchTab('dashboard')">
+            <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+            Dashboard
+          </button>
+          <button class="nav-link" data-tab="invoices" onclick="App.switchTab('invoices')">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            Invoices & Quotes
+          </button>
+          <button class="nav-link" data-tab="clients" onclick="App.switchTab('clients')">
+            <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            Clients
+          </button>
+          <button class="nav-link" data-tab="inventory" onclick="App.switchTab('inventory')">
+            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-.9-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/></svg>
+            Inventory
+          </button>
+          <button class="nav-link" data-tab="settings" onclick="App.switchTab('settings')">
+            <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            Settings
+          </button>
+        </nav>
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="company-mini-card">
+          <div id="sidebar-company-avatar" class="company-mini-avatar">M</div>
+          <div class="company-mini-info">
+            <div id="sidebar-company-name" class="company-mini-name">My Solar & IT Corp</div>
+            <div id="sidebar-company-currency" class="company-mini-currency">Currency: $</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN WRAPPER -->
+    <div class="app-main">
+
+      <!-- HEADER -->
+      <header class="app-header">
+        <div class="header-left">
+          <button id="mobile-sidebar-toggle" class="mobile-menu-btn" title="Toggle Sidebar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+          </button>
+          <div class="header-title-container">
+            <h2 id="header-title">Dashboard Analytics</h2>
+            <p id="header-subtitle">Cash flow, revenue health, and sales metrics overview</p>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Multi-Tenant Account & Sync Widget -->
+          <button class="sync-badge-btn" onclick="App.openAccountModal()" title="Switch Account Workspace & Manage Remote Sync">
+            <span id="sync-indicator-dot" class="sync-dot offline"></span>
+            <span id="header-account-label" class="sync-label">Default Workspace</span>
+            <span id="sync-indicator-text" class="sync-status-badge">Local Offline</span>
+          </button>
+
+          <!-- Role Selector -->
+          <div class="role-pill-select" title="Switch active permission role">
+            <label for="header-role-select">Role:</label>
+            <select id="header-role-select" class="role-select" onchange="App.setRole(this.value)">
+              <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="viewer">Viewer (Read-Only)</option>
+            </select>
+          </div>
+
+          <!-- Theme Switcher -->
+          <button class="btn-icon" onclick="App.toggleTheme()" title="Toggle Dark / Light Mode">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+
+          <!-- Quick Actions -->
+          <button class="btn btn-primary rbac-write" onclick="App.openWizard('invoice')">
+            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            New Invoice
+          </button>
+        </div>
+      </header>
+
+      <!-- SCROLLABLE VIEWPORT -->
+      <main class="view-viewport">
+
+        <!-- ================================================================
+             VIEW: DASHBOARD
+             ================================================================ -->
+        <section id="view-dashboard" class="app-view active">
+          
+          <!-- Filters Card -->
+          <div class="card" style="padding: 16px 20px;">
+            <div style="display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 200px;">
+                <label class="form-label">Filter by Client Account</label>
+                <select id="dash-filter-client" class="form-control" onchange="App.renderDashboard()">
+                  <option value="">All Clients</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 180px;">
+                <label class="form-label">Filter by Payment Status</label>
+                <select id="dash-filter-status" class="form-control" onchange="App.renderDashboard()">
+                  <option value="">All Statuses</option>
+                  <option value="paid">Paid</option>
+                  <option value="sent">Sent (Pending)</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </div>
+              <div style="flex: 0 0 140px;">
+                <label class="form-label">Sales Year</label>
+                <select id="dash-year-select" class="form-control" onchange="App.renderDashboard()">
+                  <option value="2026" selected>2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2024">2024</option>
+                </select>
+              </div>
+              <div>
+                <button id="dash-btn-reset-filters" class="btn btn-outline" style="display: none;" onclick="App.resetDashboardFilters()">Reset Filters</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 KPI Metrics -->
+          <div class="kpi-grid">
+            <div class="kpi-card kpi-green">
+              <div class="kpi-top">
+                <div class="kpi-label">Total Revenue (Paid)</div>
+                <div class="kpi-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.32H16.3c-.09-.92-.64-1.7-2.31-1.7-1.48 0-2.31.75-2.31 1.55 0 .8.54 1.38 2.64 1.9 2.58.64 4.24 1.63 4.24 3.79 0 1.92-1.48 3.01-3.46 3.28z"/></svg>
+                </div>
+              </div>
+              <div id="kpi-revenue" class="kpi-value">$0.00</div>
+              <div class="kpi-foot">Aggregated from settled invoices</div>
+            </div>
+
+            <div class="kpi-card kpi-amber">
+              <div class="kpi-top">
+                <div class="kpi-label">Pending Receivables</div>
+                <div class="kpi-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                </div>
+              </div>
+              <div id="kpi-pending" class="kpi-value">$0.00</div>
+              <div class="kpi-foot">Sent and awaiting client payment</div>
+            </div>
+
+            <div class="kpi-card kpi-red">
+              <div class="kpi-top">
+                <div class="kpi-label">Overdue Amount</div>
+                <div class="kpi-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                </div>
+              </div>
+              <div id="kpi-overdue" class="kpi-value">$0.00</div>
+              <div class="kpi-foot">Invoices past their due date</div>
+            </div>
+
+            <div class="kpi-card kpi-indigo">
+              <div class="kpi-top">
+                <div class="kpi-label">Total Documents</div>
+                <div class="kpi-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                </div>
+              </div>
+              <div id="kpi-count" class="kpi-value">0</div>
+              <div class="kpi-foot">Active in current workspace</div>
+            </div>
+          </div>
+
+          <!-- Dual Visual Analytics Charts Grid -->
+          <div class="charts-dual-grid">
+            <!-- 12-Month Sales Velocity Bar Chart -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Monthly Sales Velocity</div>
+                  <div class="card-subtitle">Real-time dynamic billing volume aggregation</div>
+                </div>
+              </div>
+              <div id="sales-bar-chart" class="chart-container">
+                <!-- Dynamically rendered bars -->
+              </div>
+            </div>
+
+            <!-- Status Distribution Donut Chart (Mobile Parity) -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Status Distribution</div>
+                  <div class="card-subtitle">Payment lifecycle health breakdown</div>
+                </div>
+              </div>
+              <div class="donut-chart-container">
+                <div class="donut-svg-box">
+                  <svg width="170" height="170" viewBox="0 0 170 170" id="status-donut-box">
+                    <!-- Dynamic circles rendered in app.js -->
+                  </svg>
+                  <div class="donut-center-info">
+                    <div id="donut-total-count" class="donut-center-val">0</div>
+                    <div class="donut-center-lbl">DOCUMENTS</div>
+                  </div>
+                </div>
+                <div id="status-donut-legend" class="donut-legend-box"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Invoices Table -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Recent Invoices</div>
+                <div class="card-subtitle">Quick overview of recent financial dispatches</div>
+              </div>
+              <button class="btn btn-outline btn-sm" onclick="App.switchTab('invoices')">View All Invoices</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Invoice #</th>
+                    <th>Client</th>
+                    <th>Issue Date</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-recent-tbody">
+                  <!-- Dynamically rendered -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             VIEW: INVOICES & QUOTES
+             ================================================================ -->
+        <section id="view-invoices" class="app-view">
+          <div class="filter-bar">
+            <!-- Filter Tabs -->
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="App.setInvoiceFilter('all', this)">All</button>
+              <button class="filter-tab" onclick="App.setInvoiceFilter('paid', this)">Paid</button>
+              <button class="filter-tab" onclick="App.setInvoiceFilter('sent', this)">Sent</button>
+              <button class="filter-tab" onclick="App.setInvoiceFilter('overdue', this)">Overdue</button>
+              <button class="filter-tab" onclick="App.setInvoiceFilter('draft', this)">Draft</button>
+              <button class="filter-tab" onclick="App.setInvoiceFilter('quotes', this)">Quotes</button>
+            </div>
+
+            <!-- Search, OCR & Create Actions -->
+            <div class="filter-group">
+              <div class="search-input-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input type="text" class="form-control" placeholder="Search number, client..." oninput="App.onInvoiceSearch(this.value)" />
+              </div>
+              <button class="btn btn-outline rbac-write" onclick="App.openOcrScanner()" title="Scan Quotation Sheet with Neural OCR">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"/></svg>
+                Scan Quote (OCR)
+              </button>
+              <button class="btn btn-outline rbac-write" onclick="App.openWizard('quote')">+ New Quote</button>
+              <button class="btn btn-primary rbac-write" onclick="App.openWizard('invoice')">+ New Invoice</button>
+            </div>
+          </div>
+
+          <!-- Invoices Data Table -->
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>Client Account</th>
+                  <th>Issue Date</th>
+                  <th>Due Date</th>
+                  <th>Grand Total</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invoices-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             VIEW: CLIENTS
+             ================================================================ -->
+        <section id="view-clients" class="app-view">
+          <div class="filter-bar">
+            <div class="filter-group">
+              <div class="search-input-wrapper" style="min-width: 300px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input type="text" class="form-control" placeholder="Search clients by name, email..." oninput="App.state.clientSearchQuery = this.value; App.renderClients();" />
+              </div>
+
+              <!-- Grid vs Table View Mode -->
+              <div class="view-mode-toggle">
+                <button id="clients-btn-table" class="btn btn-outline btn-sm active" onclick="App.setClientViewMode('table')" title="Table View">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 3h18v18H3V3zm2 4v4h14V7H5zm0 6v4h14v-4H5z"/></svg>
+                </button>
+                <button id="clients-btn-cards" class="btn btn-outline btn-sm" onclick="App.setClientViewMode('cards')" title="Cards / Grid View">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>
+                </button>
+              </div>
+
+              <button class="btn btn-primary rbac-write" onclick="App.openClientModal()">+ Add New Client</button>
+            </div>
+          </div>
+
+          <!-- Table View Container -->
+          <div id="clients-table-container" class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Client Name & Address</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th style="text-align: center;">Invoices</th>
+                  <th>Total Billed</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="clients-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Cards View Container -->
+          <div id="clients-cards-container" class="cards-grid" style="display: none;">
+            <!-- Dynamically populated cards -->
+          </div>
+        </section>
+
+        <!-- ================================================================
+             VIEW: INVENTORY / CATALOG
+             ================================================================ -->
+        <section id="view-inventory" class="app-view">
+          <div class="filter-bar">
+            <!-- Category Tabs Container -->
+            <div id="inventory-category-tabs" class="filter-tabs">
+              <!-- Dynamically populated categories -->
+            </div>
+
+            <!-- Search, View Switcher & Create -->
+            <div class="filter-group">
+              <div class="search-input-wrapper" style="min-width: 240px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input type="text" class="form-control" placeholder="Search catalog, SKU..." oninput="App.state.productSearchQuery = this.value; App.renderInventory();" />
+              </div>
+
+              <!-- Grid vs Table View Mode -->
+              <div class="view-mode-toggle">
+                <button id="inventory-btn-table" class="btn btn-outline btn-sm active" onclick="App.setProductViewMode('table')" title="Table View">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 3h18v18H3V3zm2 4v4h14V7H5zm0 6v4h14v-4H5z"/></svg>
+                </button>
+                <button id="inventory-btn-cards" class="btn btn-outline btn-sm" onclick="App.setProductViewMode('cards')" title="Cards / Grid View">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>
+                </button>
+              </div>
+
+              <button class="btn btn-primary rbac-write" onclick="App.openProductModal()">+ Add Product</button>
+            </div>
+          </div>
+
+          <!-- Table View Container -->
+          <div id="inventory-table-container" class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Product / Service Title</th>
+                  <th>SKU</th>
+                  <th>Category</th>
+                  <th>Unit Price</th>
+                  <th>Tax Rate</th>
+                  <th>In Stock</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Cards / Grid View Container -->
+          <div id="inventory-cards-container" class="cards-grid" style="display: none;">
+            <!-- Dynamically populated cards -->
+          </div>
+        </section>
+
+        <!-- ================================================================
+             VIEW: SETTINGS
+             ================================================================ -->
+        <section id="view-settings" class="app-view">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+
+            <!-- Company Profile Card -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Company Profile</div>
+                <div class="card-subtitle">Organization metadata for invoice letterheads</div>
+              </div>
+
+              <!-- Logo Upload & Preview -->
+              <div class="form-group">
+                <label class="form-label">Company Brand Logo</label>
+                <div style="display: flex; gap: 16px; align-items: center;">
+                  <img id="settings-logo-preview" src="" alt="Logo Preview" style="display: none; max-width: 80px; max-height: 80px; border-radius: 8px; border: 1px solid var(--border); object-fit: contain; background: white; padding: 4px;" />
+                  <label class="btn btn-outline rbac-write" style="margin: 0; cursor: pointer;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 6px;"><path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"/></svg>
+                    Upload Logo
+                    <input type="file" accept="image/*" style="display: none;" onchange="App.handleLogoUpload(this)" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Legal Company Name</label>
+                <input id="settings-company-name" type="text" class="form-control" />
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Tax / VAT Registration ID</label>
+                  <input id="settings-company-tax" type="text" class="form-control" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Currency Symbol</label>
+                  <input id="settings-company-currency" type="text" class="form-control" placeholder="$" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Billing Email</label>
+                  <input id="settings-company-email" type="email" class="form-control" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Telephone</label>
+                  <input id="settings-company-phone" type="text" class="form-control" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Business Address</label>
+                <input id="settings-company-address" type="text" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bank Remittance Instructions</label>
+                <textarea id="settings-company-bank" class="form-control" rows="2"></textarea>
+              </div>
+              <button class="btn btn-primary rbac-write" onclick="App.saveSettings()">Save Company Profile</button>
+            </div>
+
+            <!-- Invoicing Preferences -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Invoicing Preferences</div>
+                <div class="card-subtitle">Template selection, numbering patterns, and cloud API</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Invoice Numbering Pattern</label>
+                <input id="settings-invoice-format" type="text" class="form-control mono" value="INV-{YYYY}-{NNNN}" oninput="App.updateNumberFormatPreview()" />
+                <div id="settings-format-preview" class="format-preview-pill">Evaluates to: INV-2026-0001</div>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Tokens: {YYYY} = Full Year, {YY} = Short Year, {MM} = Month, {NNNN} = 4-digit sequence</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Default PDF Invoice Template</label>
+                <select id="settings-default-template" class="form-control">
+                  <option value="Classic">Classic — Formal Corporate Layout</option>
+                  <option value="Modern">Modern — Teal Accent Header</option>
+                  <option value="Minimal">Minimal — Clean Monochrome Lines</option>
+                  <option value="Corporate">Corporate — Navy Executive Banner</option>
+                  <option value="Elegant">Elegant — Refined Serif Typography</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Private Sync API Endpoint</label>
+                <input id="settings-api-url" type="text" class="form-control mono" placeholder="http://localhost:3000" />
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Connects with the PostgreSQL Express Sync Server (`server/`)</span>
+              </div>
+              <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                <input id="settings-auto-sync" type="checkbox" checked style="width: 16px; height: 16px; cursor: pointer;" />
+                <label for="settings-auto-sync" style="font-size: 0.88rem; cursor: pointer; user-select: none;">Automatically synchronize changes in background</label>
+              </div>
+              <button class="btn btn-primary rbac-write" onclick="App.saveSettings()">Update Invoicing Preferences</button>
+            </div>
+
+            <!-- Workspace Backup & Snapshots -->
+            <div class="card" style="grid-column: 1 / -1;">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Data Backup, Snapshots & Migration</div>
+                  <div class="card-subtitle">Export full state to JSON, maintain historical restore points, or reset demo fixtures</div>
+                </div>
+                <button class="btn btn-outline btn-sm rbac-write" onclick="App.createBackupSnapshot()">+ Create Snapshot Now</button>
+              </div>
+              
+              <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="App.exportWorkspaceJSON()">
+                  <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                  Export Workspace (JSON)
+                </button>
+                <label class="btn btn-outline rbac-write" style="cursor: pointer; margin: 0;">
+                  <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                  Import Workspace (JSON)
+                  <input type="file" accept=".json" style="display: none;" onchange="App.importWorkspaceJSON(this)" />
+                </label>
+                <button class="btn btn-outline rbac-write" style="color: var(--danger);" onclick="if(confirm('Reset all clients, products, and invoices to initial sample data?')) App.resetToDefaults()">
+                  Reset to Sample Demo Company
+                </button>
+              </div>
+
+              <!-- Historical Snapshot Ledger -->
+              <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+                <div style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;">Workspace Snapshot Ledger</div>
+                <div id="settings-snapshot-list" class="snapshot-list-container"></div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: 3-STEP EXECUTIVE INVOICE WIZARD (Parity with Mobile Wizard)
+       ======================================================================== -->
+  <div id="modal-wizard" class="modal-overlay">
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <h3 id="wiz-modal-title" class="modal-title">Create New Document</h3>
+          <div id="wiz-header-total-display" class="badge badge-paid mono" style="font-size: 0.85rem;">Total: $0.00</div>
+        </div>
+        <button class="btn-icon" onclick="App.closeModal('modal-wizard')">✕</button>
+      </div>
+
+      <!-- 3-Step Stepper Indicator -->
+      <div class="wizard-stepper">
+        <div id="wiz-step-ind-1" class="wizard-step-item active">
+          <span class="wizard-step-num">1</span> Core Information
+        </div>
+        <div id="wiz-step-ind-2" class="wizard-step-item">
+          <span class="wizard-step-num">2</span> Line Items
+        </div>
+        <div id="wiz-step-ind-3" class="wizard-step-item">
+          <span class="wizard-step-num">3</span> Terms & Review
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="wiz-doc-type" value="invoice" />
+
+        <!-- STEP 1: Basic Info -->
+        <div id="wiz-page-1" class="wizard-page active">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Document Number *</label>
+              <input id="wiz-number" type="text" class="form-control mono" />
+            </div>
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label class="form-label" style="margin-bottom: 0;">Client Account *</label>
+                <a href="javascript:void(0)" onclick="App.openClientModal()" style="font-size: 0.78rem; font-weight: 700; color: var(--primary);">+ Quick Add Client</a>
+              </div>
+              <select id="wiz-client" class="form-control"></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Issue Date *</label>
+              <input id="wiz-issue-date" type="date" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Due Date *</label>
+              <input id="wiz-due-date" type="date" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Initial Status</label>
+              <select id="wiz-status-select" class="form-control">
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Line Items -->
+        <div id="wiz-page-2" class="wizard-page">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div style="font-weight: 800; font-size: 0.95rem;">Catalog Items & Custom Services</div>
+            <button class="btn btn-outline btn-sm" onclick="App.addWizardLineItem()">+ Add Custom Line Item</button>
+          </div>
+
+          <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px;">
+            <table class="line-items-table">
+              <thead>
+                <tr>
+                  <th>Product / Service</th>
+                  <th style="width: 70px;">Qty</th>
+                  <th style="width: 110px;">Unit Price</th>
+                  <th style="width: 80px;">Tax %</th>
+                  <th style="width: 100px; text-align: right;">Total</th>
+                  <th style="width: 40px;"></th>
+                </tr>
+              </thead>
+              <tbody id="wiz-items-tbody"></tbody>
+            </table>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 24px; margin-top: 16px; font-size: 0.95rem; font-weight: 800;">
+            <div>Subtotal: <span id="wiz-subtotal-display" class="mono" style="color: var(--text-muted);">$0.00</span></div>
+            <div>Tax Total: <span id="wiz-tax-display" class="mono" style="color: var(--text-muted);">$0.00</span></div>
+          </div>
+        </div>
+
+        <!-- STEP 3: Terms & Review -->
+        <div id="wiz-page-3" class="wizard-page">
+          <div class="form-group">
+            <label class="form-label">Payment Terms & Remittance Notes</label>
+            <textarea id="wiz-notes" class="form-control" rows="3" placeholder="Enter payment instructions, terms, or thank you note..."></textarea>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div style="background: var(--surface-raised); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border);">
+              <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Client Account</div>
+              <div id="wiz-rev-client"></div>
+            </div>
+            <div style="background: var(--surface-raised); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border);">
+              <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Document Details</div>
+              <div id="wiz-rev-number" style="margin-bottom: 4px;"></div>
+              <div id="wiz-rev-dates" style="font-size: 0.82rem; color: var(--text-muted);"></div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Items Summary</div>
+          <div id="wiz-rev-items" style="max-height: 140px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px; margin-bottom: 16px; background: var(--surface-raised);"></div>
+
+          <div id="wiz-rev-totals" style="background: var(--surface-raised); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border); max-width: 320px; margin-left: auto;"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="wiz-btn-prev" class="btn btn-outline" style="display: none;" onclick="App.setWizardStep(App.state.wizardStep - 1)">Previous</button>
+        <button id="wiz-btn-next" class="btn btn-primary" onclick="App.setWizardStep(App.state.wizardStep + 1)">Next Step</button>
+        <button id="wiz-btn-save" class="btn btn-success" style="display: none;" onclick="App.saveWizardInvoice()">Save & Dispatch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: OCR QUOTATION SCANNER (Parity with Mobile OCR Simulator)
+       ======================================================================== -->
+  <div id="modal-ocr-scanner" class="modal-overlay">
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Neural OCR Quotation Scanner</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Extract line items and client data directly from quotation paper sheets</p>
+        </div>
+        <button class="btn-icon" onclick="App.closeModal('modal-ocr-scanner')">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Template Selection -->
+        <div class="form-group">
+          <label class="form-label">Select Sample Quotation Sheet to Scan</label>
+          <select id="ocr-template-select" class="form-control" onchange="App.updateOcrTemplatePreview()"></select>
+        </div>
+
+        <!-- Laser Scanner Box -->
+        <div class="ocr-scanner-viewport">
+          <div id="ocr-laser" class="ocr-laser-beam" style="display: none;"></div>
+          <div id="ocr-quote-preview" class="ocr-sheet-preview"></div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div style="height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 12px 0;">
+          <div id="ocr-progress-bar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease;"></div>
+        </div>
+
+        <!-- Neural Terminal Logs -->
+        <div id="ocr-terminal-logs" class="ocr-terminal mono"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="App.closeModal('modal-ocr-scanner')">Cancel</button>
+        <button class="btn btn-primary" onclick="App.triggerOcrScan()">Start Neural OCR Analysis</button>
+        <button id="ocr-btn-import" class="btn btn-success" style="display: none;" onclick="App.importOcrIntoWizard()">Import Extracted Items into Wizard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: WHATSAPP QUICK SHARE (Parity with Mobile WhatsApp Service)
+       ======================================================================== -->
+  <div id="modal-whatsapp-share" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="#25D366"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"/></svg>
+          WhatsApp Direct Dispatch
+        </h3>
+        <button class="btn-icon" onclick="App.closeModal('modal-whatsapp-share')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Client Mobile Phone Number</label>
+          <input id="wa-phone-input" type="text" class="form-control mono" placeholder="+1234567890" />
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Include country code without special characters (e.g. +14155552671)</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Formatted Dispatch Message</label>
+          <div id="wa-message-preview" class="whatsapp-bubble mono"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="App.closeModal('modal-whatsapp-share')">Cancel</button>
+        <button class="btn btn-whatsapp" onclick="App.sendWhatsAppNow()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"/></svg>
+          Open in WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: INVOICE DETAIL & ACTIONS
+       ======================================================================== -->
+  <div id="modal-invoice-detail" class="modal-overlay">
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-header">
+        <div>
+          <h3 id="detail-number" class="modal-title mono">INV-0000</h3>
+          <div id="detail-type-badge" style="margin-top: 4px;"></div>
+        </div>
+        <button class="btn-icon" onclick="App.closeModal('modal-invoice-detail')">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; margin-bottom: 24px;">
+          <div id="detail-client-info" style="background: var(--surface-raised); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);"></div>
+          <div id="detail-dates-info" style="background: var(--surface-raised); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);"></div>
+        </div>
+
+        <div style="font-weight: 800; font-size: 0.9rem; margin-bottom: 8px;">Purchased Items & Services</div>
+        <div class="table-container" style="margin-bottom: 20px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th style="text-align: center;">Qty</th>
+                <th style="text-align: right;">Unit Price</th>
+                <th style="text-align: center;">Tax %</th>
+                <th style="text-align: right;">Line Total</th>
+              </tr>
+            </thead>
+            <tbody id="detail-items-tbody"></tbody>
+          </table>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;">
+          <div style="flex: 1; font-size: 0.85rem; background: var(--surface-raised); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">
+            <strong style="display: block; margin-bottom: 4px;">Terms & Remittance Notes:</strong>
+            <span id="detail-notes"></span>
+          </div>
+          <div id="detail-summary" style="width: 260px; background: var(--surface-raised); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: space-between;">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button class="btn btn-outline btn-sm rbac-write" onclick="App.setInvoiceStatus('paid')">Mark Paid</button>
+          <button class="btn btn-outline btn-sm rbac-write" onclick="App.setInvoiceStatus('sent')">Mark Sent</button>
+          <button class="btn btn-outline btn-sm rbac-write" onclick="App.setInvoiceStatus('draft')">Mark Draft</button>
+          <button id="detail-btn-convert" class="btn btn-outline btn-sm rbac-write" style="display: none;" onclick="App.convertQuoteToInvoice()">Convert Quote to Invoice</button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-outline rbac-write" onclick="App.editActiveInvoice()">Edit</button>
+          <button class="btn btn-outline rbac-write" style="color: var(--danger);" onclick="App.deleteInvoice()">Delete</button>
+          <button class="btn btn-primary" onclick="App.openPdfPreview(App.state.activeViewingInvoiceId)">Preview & Print PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: 5 PDF TEMPLATES LIVE PREVIEW
+       ======================================================================== -->
+  <div id="modal-pdf-preview" class="modal-overlay">
+    <div class="modal-dialog modal-dialog-xl">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Interactive PDF Document Preview</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Switch between the 5 built-in invoice themes or trigger print</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <!-- 5 Template Switcher -->
+          <div class="filter-tabs">
+            <button class="filter-tab pdf-template-btn active" data-template="Classic" onclick="App.setPdfTemplate('Classic')">Classic</button>
+            <button class="filter-tab pdf-template-btn" data-template="Modern" onclick="App.setPdfTemplate('Modern')">Modern</button>
+            <button class="filter-tab pdf-template-btn" data-template="Minimal" onclick="App.setPdfTemplate('Minimal')">Minimal</button>
+            <button class="filter-tab pdf-template-btn" data-template="Corporate" onclick="App.setPdfTemplate('Corporate')">Corporate</button>
+            <button class="filter-tab pdf-template-btn" data-template="Elegant" onclick="App.setPdfTemplate('Elegant')">Elegant</button>
+          </div>
+          <button class="btn btn-primary" onclick="App.printActivePdf()">
+            <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+            Print / Save as PDF
+          </button>
+          <button class="btn-icon" onclick="App.closeModal('modal-pdf-preview')">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="background: #94a3b8; padding: 24px; display: flex; justify-content: center;">
+        <div class="pdf-sheet-wrapper">
+          <div id="pdf-sheet" class="pdf-invoice-sheet template-classic"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: CLIENT FORM (Add / Edit)
+       ======================================================================== -->
+  <div id="modal-client-form" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="client-modal-title" class="modal-title">Client Account</h3>
+        <button class="btn-icon" onclick="App.closeModal('modal-client-form')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="client-form-id" />
+        <div class="form-group">
+          <label class="form-label">Client / Organization Name *</label>
+          <input id="client-form-name" type="text" class="form-control" placeholder="e.g. Acme Corporation" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input id="client-form-email" type="email" class="form-control" placeholder="billing@acme.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input id="client-form-phone" type="text" class="form-control" placeholder="+1 (555) 012-3456" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Billing Address</label>
+          <textarea id="client-form-billing" class="form-control" rows="2" placeholder="Street, Suite, City, State, ZIP"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shipping Address</label>
+          <textarea id="client-form-shipping" class="form-control" rows="2" placeholder="Leave empty if identical to billing"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="App.closeModal('modal-client-form')">Cancel</button>
+        <button class="btn btn-primary" onclick="App.saveClientForm()">Save Client</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: PRODUCT FORM (Add / Edit + Auto SKU Generator)
+       ======================================================================== -->
+  <div id="modal-product-form" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="prod-modal-title" class="modal-title">Catalog Product</h3>
+        <button class="btn-icon" onclick="App.closeModal('modal-product-form')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="prod-form-id" />
+        <div class="form-group">
+          <label class="form-label">Product / Service Name *</label>
+          <input id="prod-form-name" type="text" class="form-control" placeholder="e.g. 550W Monocrystalline PV Module" oninput="App.onProductNameOrCategoryChange()" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">SKU Reference (Auto-Generated)</label>
+            <input id="prod-form-sku" type="text" class="form-control mono" placeholder="SOL-PV550-001" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <input id="prod-form-category" type="text" class="form-control" placeholder="Solar, IT, Service..." oninput="App.onProductNameOrCategoryChange()" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Unit Price ($)</label>
+            <input id="prod-form-price" type="number" step="0.01" min="0" class="form-control mono" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Tax Rate (%)</label>
+            <input id="prod-form-tax" type="number" step="1" min="0" max="100" class="form-control mono" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Stock Quantity</label>
+            <input id="prod-form-stock" type="number" step="1" min="0" class="form-control mono" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="prod-form-desc" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="App.closeModal('modal-product-form')">Cancel</button>
+        <button class="btn btn-primary" onclick="App.saveProductForm()">Save Product</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: MULTI-TENANT WORKSPACE & CLOUD SYNC ENGINE
+       ======================================================================== -->
+  <div id="modal-account-sync" class="modal-overlay">
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Multi-Tenant Workspaces & Cloud Sync</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Manage client data isolation, switch business accounts, or sync with mobile devices</p>
+        </div>
+        <button class="btn-icon" onclick="App.closeModal('modal-account-sync')">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Multi-Client Isolation Explanation Banner -->
+        <div style="background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 20px;">
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--primary)" style="flex-shrink: 0; margin-top: 2px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            <div style="font-size: 0.84rem; line-height: 1.5;">
+              <strong>Data Isolation Guaranteed:</strong> Each account workspace is completely quarantined in separate local partitions (<code>invoicey_{accountId}_*</code>) and backend rows keyed by unique <code>user_id UUID</code>. Switching accounts immediately unloads the current business records and mounts the target tenant.
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1: Switch Active Tenant Workspace -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Tenant Account Partition</div>
+              <div class="card-subtitle">Choose which enterprise account you are currently managing</div>
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
+            <!-- Tenant Preset 1 -->
+            <button class="btn btn-outline" style="text-align: left; padding: 12px; height: auto;" onclick="App.switchAccountWorkspace('demo', 'Solar & IT Enterprise', 'admin@solarcorp.com'); App.closeModal('modal-account-sync');">
+              <strong style="display: block; font-size: 0.92rem;">Solar & IT Enterprise</strong>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">ID: demo • USD ($)</span>
+            </button>
+            <!-- Tenant Preset 2 -->
+            <button class="btn btn-outline" style="text-align: left; padding: 12px; height: auto;" onclick="App.switchAccountWorkspace('tenant_acme', 'Acme Logistics Ltd', 'finance@acmelogistics.com'); App.closeModal('modal-account-sync');">
+              <strong style="display: block; font-size: 0.92rem;">Acme Logistics Ltd</strong>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">ID: tenant_acme • Isolated</span>
+            </button>
+            <!-- Tenant Preset 3 -->
+            <button class="btn btn-outline" style="text-align: left; padding: 12px; height: auto;" onclick="App.switchAccountWorkspace('tenant_nexus', 'Nexus Tech Agency', 'billing@nexustech.io'); App.closeModal('modal-account-sync');">
+              <strong style="display: block; font-size: 0.92rem;">Nexus Tech Agency</strong>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">ID: tenant_nexus • Isolated</span>
+            </button>
+          </div>
+
+          <!-- Custom Tenant Input -->
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Custom Account / Tenant ID</label>
+              <input id="sync-custom-tenant-id" type="text" class="form-control mono" placeholder="e.g. tenant_mycompany" />
+            </div>
+            <div class="form-group" style="flex: 1.5;">
+              <label class="form-label">Company Name</label>
+              <input id="sync-custom-tenant-name" type="text" class="form-control" placeholder="e.g. Apex Global Solutions" />
+            </div>
+            <div style="display: flex; align-items: flex-end; margin-bottom: 12px;">
+              <button class="btn btn-primary" onclick="const tid=document.getElementById('sync-custom-tenant-id').value.trim(); const tname=document.getElementById('sync-custom-tenant-name').value.trim()||tid; if(tid){ App.switchAccountWorkspace(tid, tname); App.closeModal('modal-account-sync'); }">Switch</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Remote Cloud Sync with Mobile App -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Remote Cloud Sync Engine</div>
+              <div class="card-subtitle">Synchronize in real time with the PostgreSQL / Express backend (`server/`)</div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="App.pingApi()">Test Server Connection</button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Session Token (Bearer Authentication)</label>
+            <input id="sync-auth-token" type="text" class="form-control mono" placeholder="Paste your mobile auth token or JWT here..." />
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Obtained from mobile app login or server authentication endpoint</span>
+          </div>
+
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="App.connectWithToken(document.getElementById('sync-auth-token').value)">
+              Connect & Sync Workspace
+            </button>
+            <button class="btn btn-outline" onclick="App.uploadWorkspace(true)">
+              Push Local to Cloud
+            </button>
+            <button class="btn btn-outline" onclick="App.downloadWorkspace(true)">
+              Pull Latest from Cloud
+            </button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="App.closeModal('modal-account-sync')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS CONTAINER -->
+  <div id="toast-container"></div>
+
+  <!-- APP JAVASCRIPT -->
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -396,10 +396,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(comp.address, style: const TextStyle(fontSize: 12)),
-                      Text(
-                        'Tax ID: ${comp.taxId}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
+                      if (comp.taxId.trim().isNotEmpty)
+                        Text(
+                          'Tax ID: ${comp.taxId}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
                     ],
                   ),
                 ),

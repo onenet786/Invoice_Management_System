@@ -14,6 +14,7 @@ import '../../models/company_model.dart';
 import '../../models/user_model.dart';
 import '../../services/backup_service.dart';
 import '../../services/pdf_service.dart';
+import '../../services/remote_sync_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,6 +24,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const _googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+  );
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _taxIdController;
@@ -47,9 +51,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _logoController = TextEditingController(text: comp.logo);
     _selectedCurrency = comp.currency;
     _packageInfo = PackageInfo.fromPlatform();
-    if (!kIsWeb) {
-      _googleSignIn = GoogleSignIn(scopes: const ['email']);
-    }
+    _googleSignIn = GoogleSignIn(
+      clientId: kIsWeb && _googleWebClientId.isNotEmpty
+          ? _googleWebClientId
+          : null,
+      scopes: const ['email'],
+    );
   }
 
   @override
@@ -204,6 +211,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               const SizedBox(height: 20),
                               _buildGoogleDriveBackupCard(theme, state),
                               const SizedBox(height: 20),
+                              _buildServerSyncCard(theme, state),
+                              const SizedBox(height: 20),
                               _buildTestingSandboxCard(theme, state),
                               const SizedBox(height: 20),
                               _buildAboutCard(theme),
@@ -220,6 +229,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildPreferencesCard(theme, state),
                         const SizedBox(height: 20),
                         _buildGoogleDriveBackupCard(theme, state),
+                        const SizedBox(height: 20),
+                        _buildServerSyncCard(theme, state),
                         const SizedBox(height: 20),
                         _buildTestingSandboxCard(theme, state),
                         const SizedBox(height: 20),
@@ -997,6 +1008,186 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildServerSyncCard(ThemeData theme, AppStateProvider state) {
+    final sync = state.remoteSyncService;
+    final status = !sync.isConfigured
+        ? 'Add your server API URL to begin.'
+        : sync.isConnected
+        ? 'Connected to ${sync.apiUrl}'
+        : 'Server configured. Sign in to connect this workspace.';
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.cloud_sync_outlined, color: Colors.indigo.shade700),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Private Server Sync',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _showServerUrlDialog(context, state),
+                  child: Text(sync.isConfigured ? 'Change URL' : 'Set URL'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(status, style: TextStyle(fontSize: 12, color: theme.hintColor)),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: !sync.isConfigured
+                      ? null
+                      : () => _connectPrivateServer(state),
+                  icon: const Icon(Icons.login, size: 18),
+                  label: Text(sync.isConnected ? 'Reconnect' : 'Sign In'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: !sync.isConnected
+                      ? null
+                      : () => _uploadPrivateWorkspace(state),
+                  icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                  label: const Text('Upload'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: !sync.isConnected
+                      ? null
+                      : () => _downloadPrivateWorkspace(state),
+                  icon: const Icon(Icons.cloud_download_outlined, size: 18),
+                  label: const Text('Download'),
+                ),
+                if (sync.isConnected)
+                  TextButton(
+                    onPressed: () async {
+                      await sync.disconnect();
+                      if (mounted) setState(() {});
+                    },
+                    child: const Text('Disconnect'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Uploads occur automatically after local edits while connected. Download replaces this device’s local workspace with the server copy.',
+              style: TextStyle(fontSize: 11, color: theme.hintColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showServerUrlDialog(
+    BuildContext context,
+    AppStateProvider state,
+  ) async {
+    final controller = TextEditingController(text: state.remoteSyncService.apiUrl);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Private Sync Server'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(
+            labelText: 'API URL',
+            hintText: 'https://api.yourdomain.com',
+            prefixIcon: Icon(Icons.link),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await state.remoteSyncService.setApiUrl(controller.text);
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop();
+                setState(() {});
+              } on RemoteSyncException catch (error) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(error.message)),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+  }
+
+  Future<void> _connectPrivateServer(AppStateProvider state) async {
+    try {
+      final account = await _googleSignIn?.signIn();
+      final authentication = await account?.authentication;
+      final idToken = authentication?.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw const RemoteSyncException('Google did not return an ID token.');
+      }
+      await state.remoteSyncService.signInWithGoogle(idToken);
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Private sync server connected.')),
+        );
+      }
+    } on RemoteSyncException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not connect to sync server: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadPrivateWorkspace(AppStateProvider state) async {
+    try {
+      await state.remoteSyncService.uploadWorkspace();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Workspace uploaded to private server.')),
+        );
+      }
+    } on RemoteSyncException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _downloadPrivateWorkspace(AppStateProvider state) async {
+    try {
+      final restored = await state.remoteSyncService.downloadWorkspace();
+      if (restored) await state.reloadAllData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(restored ? 'Workspace downloaded from private server.' : 'No workspace exists on the server yet.')),
+        );
+      }
+    } on RemoteSyncException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
   Widget _buildGoogleDriveBackupCard(ThemeData theme, AppStateProvider state) {
     final BackupService backup = state.backupService;
     final isLinked = backup.isDriveLinked;
@@ -1423,7 +1614,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         subtitle: Text(
                           selectedEmail.isEmpty
                               ? kIsWeb
-                                    ? 'Google account selection is available in the mobile app.'
+                                    ? _googleWebClientId.isEmpty
+                                          ? 'Configure GOOGLE_WEB_CLIENT_ID to enable web sign-in.'
+                                          : 'Opens the Google account picker in this browser.'
                                     : 'Opens the Google account picker on this device.'
                               : selectedEmail,
                           style: const TextStyle(fontSize: 11),
@@ -1431,7 +1624,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         trailing: selectedEmail.isNotEmpty
                             ? const Icon(Icons.check_circle, color: Colors.blue)
                             : null,
-                        onTap: kIsWeb
+                        onTap: kIsWeb && _googleWebClientId.isEmpty
                             ? null
                             : () async {
                                 try {
@@ -1445,7 +1638,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ScaffoldMessenger.of(dialogCtx).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Google sign-in needs OAuth setup for this app. Add google-services.json, then try again. (${error.code})',
+                                        kIsWeb
+                                            ? 'Google sign-in needs a Web OAuth client ID and authorized browser origin. (${error.code})'
+                                            : 'Google sign-in needs OAuth setup for this app. Add google-services.json, then try again. (${error.code})',
                                       ),
                                     ),
                                   );
